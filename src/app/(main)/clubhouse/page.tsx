@@ -6,16 +6,16 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Settings, Plus } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 
-// Mock data (until we fetch from API)
-const mockUser = {
-  tier_seller: 'eagle',
-  handicap_seller: 14.2,
-  total_earned: 84700,
-  total_sales: 12,
-  total_purchases: 8,
-  rating_score: 4.9,
+// Helper: Get tier display info
+function getTierDisplay(tier: string) {
+  const tiers: { [key: string]: { name: string; emoji: string } } = {
+    birdie: { name: 'Birdie', emoji: '🐦' },
+    eagle: { name: 'Eagle', emoji: '🦅' },
+    albatross: { name: 'Albatross', emoji: '🌟' },
+    hole_in_one: { name: 'Hole-in-One', emoji: '🏆' },
+  }
+  return tiers[tier] || tiers.birdie
 }
-
 const mockListings = [
   { id: '1', title: 'Travis Mathew Polo', brand: 'Travis Mathew', price: 6500, status: 'active', views: 124, saves: 8, created_at: '2026-01-17T10:00:00Z' },
   { id: '2', title: 'Malbon Bucket Hat', brand: 'Malbon Golf', price: 5800, status: 'active', views: 89, saves: 12, created_at: '2026-01-15T14:30:00Z' },
@@ -91,16 +91,6 @@ function getRelativeTime(dateString: string) {
   if (diffHours < 24) return `${diffHours}h ago`
   if (diffDays < 7) return `${diffDays}d ago`
   return formatDate(dateString)
-}
-
-function getTierInfo(tier: string) {
-  const tiers: { [key: string]: { name: string; emoji: string } } = {
-    birdie: { name: 'Birdie', emoji: '🐦' },
-    eagle: { name: 'Eagle', emoji: '🦅' },
-    albatross: { name: 'Albatross', emoji: '🌟' },
-    hole_in_one: { name: 'Hole-in-One', emoji: '🏆' },
-  }
-  return tiers[tier] || tiers.birdie
 }
 
 // Tab Components
@@ -770,8 +760,7 @@ export default function ClubhousePage() {
   const router = useRouter()
   const { profile, isLoading } = useAuth()
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'listings')
-  const tier = getTierInfo(mockUser.tier_seller)
-
+  
   // Show loading state
   if (isLoading) {
     return (
@@ -784,6 +773,17 @@ export default function ClubhousePage() {
   // Get display name and username from profile
   const displayName = profile?.display_name || profile?.username || 'User'
   const username = profile?.username || 'unknown'
+  const sellerTier = getTierDisplay(profile?.tier_seller || 'birdie')
+  const sellerHandicap = profile?.handicap_seller ?? 18.0
+  
+  // Real stats for user (new users have 0 sales, $0 earned)
+  // TODO: Query these from database once we have the API endpoints
+  const stats = {
+    sales: 0,      // SELECT COUNT(*) FROM orders WHERE seller_id = profile.id
+    earned: 0,     // SELECT SUM(seller_earnings_cents) FROM orders WHERE seller_id = profile.id
+    purchases: 0,  // SELECT COUNT(*) FROM orders WHERE buyer_id = profile.id
+    rating: 4.8,   // TODO: Calculate from reviews table
+  }
 
   const handleTabChange = (tab: string) => {
     // Save scroll position before any state changes
@@ -812,7 +812,7 @@ export default function ClubhousePage() {
             <div>
               <h1 className="text-3xl font-bold text-gray-900">My Clubhouse</h1>
               <p className="text-gray-600 mt-1">
-                @{username} • {tier.emoji} {tier.name} • {mockUser.handicap_seller} Handicap
+                @{username} • {sellerTier.emoji} {sellerTier.name} • {sellerHandicap.toFixed(1)} Handicap
               </p>
             </div>
             <div className="flex gap-2">
@@ -842,19 +842,19 @@ export default function ClubhousePage() {
           {/* Stats Row */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white border border-gray-200 rounded-lg p-4 text-center">
-              <p className="text-2xl font-bold text-[#5f6651]">{formatPrice(mockUser.total_earned)}</p>
+              <p className="text-2xl font-bold text-[#5f6651]">{formatPrice(stats.earned)}</p>
               <p className="text-xs text-gray-600 mt-1">Earned</p>
             </div>
             <div className="bg-white border border-gray-200 rounded-lg p-4 text-center">
-              <p className="text-2xl font-bold text-[#5f6651]">{mockUser.total_sales}</p>
+              <p className="text-2xl font-bold text-[#5f6651]">{stats.sales}</p>
               <p className="text-xs text-gray-600 mt-1">Sales</p>
             </div>
             <div className="bg-white border border-gray-200 rounded-lg p-4 text-center">
-              <p className="text-2xl font-bold text-[#5f6651]">{mockUser.total_purchases}</p>
+              <p className="text-2xl font-bold text-[#5f6651]">{stats.purchases}</p>
               <p className="text-xs text-gray-600 mt-1">Purchases</p>
             </div>
             <div className="bg-white border border-gray-200 rounded-lg p-4 text-center">
-              <p className="text-2xl font-bold text-[#5f6651]">{mockUser.rating_score}</p>
+              <p className="text-2xl font-bold text-[#5f6651]">{stats.rating}</p>
               <p className="text-xs text-gray-600 mt-1">Rating</p>
             </div>
           </div>

@@ -8,6 +8,16 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
+// Helper: Get tier display info
+const getTierDisplay = (tier: string) => {
+  switch (tier) {
+    case 'hole_in_one': return { emoji: '🏆', name: 'Hole-in-One' }
+    case 'albatross': return { emoji: '🌟', name: 'Albatross' }
+    case 'eagle': return { emoji: '🦅', name: 'Eagle' }
+    default: return { emoji: '🐦', name: 'Birdie' }
+  }
+}
+
 const navItems = [
   {
     label: 'Discover',
@@ -213,20 +223,24 @@ export function Header() {
                       {/* User Info Header */}
                       <div className="bg-gradient-to-br from-brand-green to-[#4a5040] text-white px-4 py-2.5">
                         <p className="font-bold text-sm">{profile?.display_name || 'User'}</p>
-                        <p className="text-xs text-green-100 mt-0.5">@{profile?.username || user.email?.split('@')[0] || 'user'} • Eagle Tier</p>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <p className="text-xs text-green-100">@{profile?.username || user.email?.split('@')[0] || 'user'}</p>
+                          <span className="text-sm">{getTierDisplay(profile?.tier_seller || 'birdie').emoji}</span>
+                          <p className="text-xs text-green-100">{getTierDisplay(profile?.tier_seller || 'birdie').name} Tier</p>
+                        </div>
                         
                         {/* User Stats */}
                         <div className="mt-2 grid grid-cols-3 gap-3 pt-3">
                           <div className="text-center">
-                            <p className="font-bold text-sm text-white">14.2</p>
+                            <p className="font-bold text-sm text-white">{(profile?.handicap_seller ?? 18.0).toFixed(1)}</p>
                             <p className="text-xs text-green-100 mt-0.5">Handicap</p>
                           </div>
                           <div className="text-center">
-                            <p className="font-bold text-sm text-white">12</p>
+                            <p className="font-bold text-sm text-white">0</p>
                             <p className="text-xs text-green-100 mt-0.5">Sales</p>
                           </div>
                           <div className="text-center">
-                            <p className="font-bold text-sm text-white">$847</p>
+                            <p className="font-bold text-sm text-white">$0</p>
                             <p className="text-xs text-green-100 mt-0.5">Earned</p>
                           </div>
                         </div>

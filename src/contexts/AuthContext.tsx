@@ -16,8 +16,16 @@ interface Profile {
   course_name: string | null
   course_tagline: string | null
   header_image_url: string | null
-  tier: 'birdie' | 'eagle' | 'albatross' | 'hole_in_one'
-  handicap_points: number
+  
+  // Dual-track handicap system (v2.0)
+  handicap_seller: number  // 18.0 → 0.0
+  handicap_buyer: number   // 18.0 → 0.0
+  tier_seller: 'birdie' | 'eagle' | 'albatross' | 'hole_in_one'
+  tier_buyer: 'birdie' | 'eagle' | 'albatross' | 'hole_in_one'
+  prestige_seller: number  // 0, 1, 2, 3+
+  prestige_buyer: number   // 0, 1, 2, 3+
+  phone_verified: boolean
+  
   created_at: string
 }
 
