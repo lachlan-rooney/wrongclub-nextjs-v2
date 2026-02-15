@@ -43,12 +43,15 @@ function formatPrice(cents: number) {
 }
 
 export default function BrowsePage() {
+  const [isMobile, setIsMobile] = useState(false)
   const [viewMode, setViewMode] = useState<'course' | 'grid'>('course')
   const [hoveredListing, setHoveredListing] = useState<typeof mockListings[0] | null>(null)
   const [activeGender, setActiveGender] = useState<string | null>(null)
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [isMounted, setIsMounted] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   
   // Drag and drop state
   const [positions, setPositions] = useState(() => {
@@ -67,13 +70,59 @@ export default function BrowsePage() {
   const [hasMoved, setHasMoved] = useState(false)
   const courseRef = useRef<HTMLDivElement>(null)
 
+  // Search debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchTerm])
+
   useEffect(() => {
     setIsMounted(true)
+    
+    // Check if mobile on mount
+    const checkMobile = () => {
+      const isMobileView = window.innerWidth < 768
+      setIsMobile(isMobileView)
+      if (isMobileView) {
+        setViewMode('grid')
+      }
+    }
+    
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
+  const mobileCategories = ['All', 'Tops', 'Bottoms', 'Shoes', 'Hats', 'Accessories', 'Bags', 'Collabs ★']
+
   const filteredListings = mockListings.filter(listing => {
-    if (activeGender && listing.gender !== activeGender) return false
-    if (activeCategory && listing.category !== activeCategory.toLowerCase()) return false
+    // Search filter
+    const searchLower = debouncedSearch.toLowerCase()
+    if (searchLower) {
+      const matchesSearch = 
+        listing.brand.toLowerCase().includes(searchLower) ||
+        listing.title.toLowerCase().includes(searchLower) ||
+        listing.category.toLowerCase().includes(searchLower)
+      if (!matchesSearch) return false
+    }
+
+    // Mobile category filter
+    if (isMobile) {
+      if (activeCategory && activeCategory !== 'All') {
+        if (activeCategory === 'Collabs ★') {
+          if (!listing.brand.includes(' x ')) return false
+        } else {
+          if (listing.category !== activeCategory.toLowerCase()) return false
+        }
+      }
+    } else {
+      // Desktop gender/category filter
+      if (activeGender && listing.gender !== activeGender) return false
+      if (activeCategory && listing.category !== activeCategory.toLowerCase()) return false
+    }
+    
     return true
   })
 
@@ -81,6 +130,10 @@ export default function BrowsePage() {
     setActiveGender(gender)
     setActiveCategory(category)
     setOpenDropdown(null)
+  }
+
+  const handleMobileCategorySelect = (category: string) => {
+    setActiveCategory(category === 'All' ? null : category)
   }
 
   const clearFilters = () => {
@@ -146,7 +199,19 @@ export default function BrowsePage() {
       {/* Main content */}
       <main className="flex flex-col" style={{ height: 'calc(100vh - 80px)' }}>
         {/* Filter bar */}
-        <div className="px-6 py-2 bg-white z-30 border-b border-gray-100 flex-shrink-0">
+        {/* Search bar - visible on all screens */}
+        <div className="px-4 sm:px-6 py-3 bg-white z-30 border-b border-[var(--border)] flex-shrink-0">
+          <input
+            type="text"
+            placeholder="Search brand, product, category..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full px-4 py-2.5 border border-[var(--border)] rounded-full text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--brand)] focus:ring-offset-0 bg-white"
+          />
+        </div>
+
+        {/* Filter bar - Desktop version */}
+        <div className="hidden md:block px-6 py-2 bg-white z-30 border-b border-[var(--border)] flex-shrink-0">
           <div className="flex items-center justify-between gap-4">
             {/* Filters */}
             <div className="flex items-center gap-2">
@@ -154,7 +219,7 @@ export default function BrowsePage() {
                 onClick={clearFilters}
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
                   !activeGender && !activeCategory
-                    ? 'bg-[#5f6651] text-white'
+                    ? 'bg-[var(--brand)] text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
@@ -170,7 +235,7 @@ export default function BrowsePage() {
                 <button
                   className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
                     activeGender === 'mens'
-                      ? 'bg-[#5f6651] text-white'
+                      ? 'bg-[var(--brand)] text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
@@ -200,7 +265,7 @@ export default function BrowsePage() {
                 <button
                   className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
                     activeGender === 'womens'
-                      ? 'bg-[#5f6651] text-white'
+                      ? 'bg-[var(--brand)] text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
@@ -230,7 +295,7 @@ export default function BrowsePage() {
                 <button
                   className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
                     activeGender === 'juniors'
-                      ? 'bg-[#5f6651] text-white'
+                      ? 'bg-[var(--brand)] text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
@@ -253,7 +318,7 @@ export default function BrowsePage() {
 
               {/* Active filter indicator */}
               {activeCategory && (
-                <span className="px-3 py-1 bg-[#5f6651] text-white rounded-full text-sm font-medium">
+                <span className="px-3 py-1 bg-[var(--brand)] text-white rounded-full text-sm font-medium">
                   {activeCategory}
                   <button onClick={clearFilters} className="ml-2 hover:text-gray-200">×</button>
                 </span>
@@ -265,7 +330,7 @@ export default function BrowsePage() {
               <button
                 onClick={() => setViewMode('course')}
                 className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
-                  viewMode === 'course' ? 'bg-[#5f6651] text-white' : 'text-gray-600 hover:text-gray-900'
+                  viewMode === 'course' ? 'bg-[var(--brand)] text-white' : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
                 ⛳ Course
@@ -273,13 +338,40 @@ export default function BrowsePage() {
               <button
                 onClick={() => setViewMode('grid')}
                 className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
-                  viewMode === 'grid' ? 'bg-[#5f6651] text-white' : 'text-gray-600 hover:text-gray-900'
+                  viewMode === 'grid' ? 'bg-[var(--brand)] text-white' : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
                 ▦ Grid
               </button>
             </div>
           </div>
+        </div>
+
+        {/* Filter chips bar - Mobile only */}
+        {isMobile && (
+          <div className="px-3 py-3 bg-white z-30 border-b border-[var(--border)] flex-shrink-0 overflow-x-auto scrollbar-hide">
+            <div className="flex gap-2 whitespace-nowrap">
+              {mobileCategories.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => handleMobileCategorySelect(cat)}
+                  className={`px-4 py-2 rounded-full text-xs font-medium transition-all flex-shrink-0 active:scale-95 ${
+                    (cat === 'All' ? !activeCategory : activeCategory === cat)
+                      ? 'bg-[var(--brand)] text-white'
+                      : 'bg-white text-gray-700 border-[1.5px] border-[var(--border)]'
+                  }`}
+                  style={{ fontFamily: 'DM Sans', fontSize: '13px', fontWeight: 500 }}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Results count */}
+        <div className="px-4 sm:px-6 py-2 bg-white text-xs text-gray-500 border-b border-[var(--border)] flex-shrink-0">
+          {filteredListings.length} {filteredListings.length === 1 ? 'item' : 'items'}
         </div>
 
         {/* Course View */}
@@ -436,34 +528,83 @@ export default function BrowsePage() {
 
         {/* Grid View */}
         {viewMode === 'grid' && (
-          <div className="w-full flex-1 overflow-y-auto px-6 py-8">
-            <div className="max-w-7xl mx-auto">
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-              {filteredListings.map((listing) => (
-                <Link
-                  key={listing.id}
-                  href={`/listing/${listing.id}`}
-                  className="group block bg-white rounded-2xl overflow-hidden border border-gray-100 hover:shadow-lg transition-all"
-                >
-                  <div className="aspect-square overflow-hidden relative bg-transparent">
-                    <Image
-                      src={listing.img}
-                      alt={listing.title}
-                      fill
-                      className="object-contain"
-                      quality={70}
-                      loading="lazy"
-                      sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
-                    />
-                  </div>
-                  <div className="p-4">
-                    <p className="text-xs text-gray-500 uppercase tracking-wide">{listing.brand}</p>
-                    <h3 className="font-medium text-gray-900 mt-1 line-clamp-1">{listing.title}</h3>
-                    <p className="text-lg font-bold text-[#5f6651] mt-2">{formatPrice(listing.price)}</p>
-                  </div>
-                </Link>
-              ))}
-            </div>
+          <div className="w-full flex-1 overflow-y-auto">
+            <div className={isMobile ? 'p-3' : 'px-6 py-8'}>
+              <div className={isMobile ? 'grid grid-cols-2 gap-2.5' : 'max-w-7xl mx-auto grid grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4'}>
+                {filteredListings.map((listing, idx) => (
+                  <Link
+                    key={listing.id}
+                    href={`/listing/${listing.id}`}
+                    className={`group block bg-white rounded-2xl overflow-hidden ${isMobile ? '' : 'border border-gray-100 hover:shadow-lg'} transition-all`}
+                    style={isMobile ? {
+                      animation: `fadeUpStagger 0.4s ease-out ${idx * 30}ms backwards`
+                    } : {}}
+                  >
+                    {/* Image container */}
+                    <div className="aspect-square overflow-hidden relative" style={{
+                      backgroundColor: isMobile ? 'rgba(95, 102, 81, 0.05)' : 'transparent'
+                    }}>
+                      <Image
+                        src={listing.img}
+                        alt={listing.title}
+                        fill
+                        className="object-contain"
+                        quality={70}
+                        loading="lazy"
+                        sizes={isMobile ? "50vw" : "(max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"}
+                      />
+
+                      {isMobile && (
+                        <>
+                          {/* Heart button */}
+                          <button
+                            className="absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-95"
+                            style={{
+                              backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                              backdropFilter: 'blur(8px)'
+                            }}
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                            }}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                            </svg>
+                          </button>
+
+                          {/* COLLAB badge */}
+                          {listing.brand.includes(' x ') && (
+                            <div className="absolute top-2 left-2 bg-[var(--brand)] text-white px-2.5 py-1 rounded-full text-[10px] font-bold">
+                              COLLAB
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+
+                    {/* Card info */}
+                    <div className={isMobile ? 'p-2.5' : 'p-4'}>
+                      <p className={`text-[var(--brand)] uppercase ${isMobile ? 'text-[10px] tracking-wider' : 'text-xs tracking-wide'}`} style={{ letterSpacing: isMobile ? '0.8px' : 'normal' }}>
+                        {listing.brand}
+                      </p>
+                      <h3 className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium text-gray-900 mt-1 line-clamp-2`}>
+                        {listing.title}
+                      </h3>
+                      <div className={`mt-2 flex items-center ${isMobile ? 'justify-between gap-2' : 'justify-between'}`}>
+                        <p className={`font-bold text-[var(--brand)] ${isMobile ? 'text-sm' : 'text-lg'}`}>
+                          {formatPrice(listing.price)}
+                        </p>
+                        {isMobile && (
+                          <span className={`px-2 py-1 rounded-full text-[11px] font-medium bg-[var(--sand-light)] text-gray-700`}>
+                            {listing.category}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
             </div>
           </div>
         )}

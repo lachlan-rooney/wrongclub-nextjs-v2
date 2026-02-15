@@ -4,11 +4,10 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Settings, Plus } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
 
-// Mock data
+// Mock data (until we fetch from API)
 const mockUser = {
-  name: 'Lachlan',
-  username: 'lachlan',
   tier_seller: 'eagle',
   handicap_seller: 14.2,
   total_earned: 84700,
@@ -769,8 +768,22 @@ function MessagesTab() {
 export default function ClubhousePage() {
   const searchParams = useSearchParams()
   const router = useRouter()
+  const { profile, isLoading } = useAuth()
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'listings')
   const tier = getTierInfo(mockUser.tier_seller)
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 pt-20 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#5f6651]"></div>
+      </div>
+    )
+  }
+
+  // Get display name and username from profile
+  const displayName = profile?.display_name || profile?.username || 'User'
+  const username = profile?.username || 'unknown'
 
   const handleTabChange = (tab: string) => {
     // Save scroll position before any state changes
@@ -799,7 +812,7 @@ export default function ClubhousePage() {
             <div>
               <h1 className="text-3xl font-bold text-gray-900">My Clubhouse</h1>
               <p className="text-gray-600 mt-1">
-                @{mockUser.username} • {tier.emoji} {tier.name} • {mockUser.handicap_seller} Handicap
+                @{username} • {tier.emoji} {tier.name} • {mockUser.handicap_seller} Handicap
               </p>
             </div>
             <div className="flex gap-2">

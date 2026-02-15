@@ -232,12 +232,12 @@ function formatPrice(cents: number): string {
 
 export default function MessagesPage() {
   const [selectedConvId, setSelectedConvId] = useState<string | null>(null)
+  const [mobileView, setMobileView] = useState<'list' | 'chat'>('list')
   const [searchQuery, setSearchQuery] = useState('')
   const [filterType, setFilterType] = useState<'all' | 'buying' | 'selling'>('all')
   const [messageInput, setMessageInput] = useState('')
   const [conversations, setConversations] = useState(mockConversations)
   const [messages, setMessages] = useState(mockMessages)
-  const [isMobile, setIsMobile] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
@@ -248,12 +248,14 @@ export default function MessagesPage() {
     scrollToBottom()
   }, [selectedConvId, messages])
 
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768)
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [])
+  const handleSelectConversation = (convId: string) => {
+    setSelectedConvId(convId)
+    setMobileView('chat')
+  }
+
+  const handleBackToList = () => {
+    setMobileView('list')
+  }
 
   const filteredConversations = conversations.filter((conv) => {
     const matchesSearch =
@@ -310,98 +312,10 @@ export default function MessagesPage() {
     }
   }
 
-  if (isMobile && selectedConvId) {
-    return (
-      <div className="min-h-screen bg-white flex flex-col">
-        {/* Mobile Chat Header */}
-        <div className="flex items-center gap-3 p-4 border-b border-gray-200 sticky top-0 bg-white z-10">
-          <button
-            onClick={() => setSelectedConvId(null)}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div className="flex-1">
-            <h3 className="font-semibold text-gray-900">
-              {selectedConversation?.participant.name}
-            </h3>
-            <p className="text-xs text-gray-500">
-              @{selectedConversation?.participant.username}
-            </p>
-          </div>
-        </div>
-
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {Object.entries(groupMessagesByDate(currentMessages)).map(
-            ([date, msgs]) => (
-              <div key={date}>
-                <div className="flex justify-center mb-4">
-                  <span className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                    {date}
-                  </span>
-                </div>
-                {msgs.map((msg) => (
-                  <div
-                    key={msg.id}
-                    className={`flex ${
-                      msg.sender_is_me ? 'justify-end' : 'justify-start'
-                    } mb-2`}
-                  >
-                    <div
-                      className={`max-w-xs rounded-2xl px-4 py-2 ${
-                        msg.sender_is_me
-                          ? 'bg-[#5f6651] text-white'
-                          : 'bg-gray-100 text-gray-900'
-                      }`}
-                    >
-                      <p className="text-sm">{msg.content}</p>
-                      <p
-                        className={`text-xs mt-1 ${
-                          msg.sender_is_me
-                            ? 'text-gray-100'
-                            : 'text-gray-500'
-                        }`}
-                      >
-                        {formatMessageTime(msg.sent_at)}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Input */}
-        <div className="p-4 border-t border-gray-200 sticky bottom-0 bg-white">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={messageInput}
-              onChange={(e) => setMessageInput(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Type a message..."
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5f6651]"
-            />
-            <button
-              onClick={handleSendMessage}
-              disabled={!messageInput.trim()}
-              className="bg-[#5f6651] text-white p-2 rounded-lg hover:bg-[#4a5040] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <Send className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-screen bg-white flex flex-col">
-      {/* Page Header */}
-      <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
+      {/* Page Header - Desktop only */}
+      <div className="hidden md:flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
         <h1 className="text-3xl font-bold text-gray-900">Messages</h1>
         <button className="flex items-center gap-2 bg-[#5f6651] text-white px-4 py-2 rounded-lg hover:bg-[#4a5040] transition-colors">
           <Plus className="w-5 h-5" />
@@ -411,8 +325,17 @@ export default function MessagesPage() {
 
       {/* Main Content */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left Sidebar */}
-        <div className="w-80 border-r border-gray-200 flex flex-col bg-white">
+        
+        {/* Conversation List - Hidden on mobile when viewing chat */}
+        <div className={`
+          w-full md:w-80 border-r border-gray-200 flex flex-col bg-white
+          ${mobileView === 'list' ? 'block' : 'hidden md:flex'}
+        `}>
+          {/* Mobile Header */}
+          <div className="md:hidden p-4 border-b border-gray-200">
+            <h1 className="text-xl font-bold text-gray-900">Messages</h1>
+          </div>
+
           {/* Search Bar */}
           <div className="p-4 border-b border-gray-200">
             <div className="relative">
@@ -427,8 +350,8 @@ export default function MessagesPage() {
             </div>
           </div>
 
-          {/* Filter Tabs */}
-          <div className="flex gap-2 px-4 pt-4 border-b border-gray-200">
+          {/* Filter Tabs - Hidden on mobile */}
+          <div className="hidden md:flex gap-2 px-4 pt-4 border-b border-gray-200">
             {(['all', 'buying', 'selling'] as const).map((tab) => (
               <button
                 key={tab}
@@ -454,7 +377,7 @@ export default function MessagesPage() {
               filteredConversations.map((conv) => (
                 <button
                   key={conv.id}
-                  onClick={() => setSelectedConvId(conv.id)}
+                  onClick={() => handleSelectConversation(conv.id)}
                   className={`w-full p-4 border-b border-gray-100 text-left hover:bg-gray-50 transition-colors ${
                     selectedConvId === conv.id ? 'bg-gray-50 border-l-4 border-l-[#5f6651]' : ''
                   }`}
@@ -491,144 +414,153 @@ export default function MessagesPage() {
           </div>
         </div>
 
-        {/* Right Panel - Chat */}
-        {selectedConversation ? (
-          <div className="flex-1 flex flex-col bg-white">
-            {/* Chat Header */}
-            <div className="p-6 border-b border-gray-200 flex items-start justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-12 h-12 rounded-full bg-[#5f6651] text-white flex items-center justify-center font-semibold">
-                    {getAvatarInitial(selectedConversation.participant.name)}
+        {/* Chat View - Hidden on mobile when viewing list */}
+        <div className={`
+          flex-1 flex flex-col bg-white
+          ${mobileView === 'chat' ? 'block' : 'hidden md:flex'}
+        `}>
+          {selectedConversation ? (
+            <>
+              {/* Chat Header */}
+              <div className="p-4 md:p-6 border-b border-gray-200 flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  {/* Back Button - Mobile only */}
+                  <button
+                    onClick={handleBackToList}
+                    className="md:hidden p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors"
+                  >
+                    <ArrowLeft className="w-5 h-5" />
+                  </button>
+
+                  {/* Avatar and Info */}
+                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-[#5f6651] text-white flex items-center justify-center font-semibold flex-shrink-0">
+                    {selectedConversation && getAvatarInitial(selectedConversation.participant.name)}
                   </div>
                   <div>
-                    <h2 className="text-lg font-semibold text-gray-900">
-                      {selectedConversation.participant.name}
+                    <h2 className="text-base md:text-lg font-semibold text-gray-900">
+                      {selectedConversation?.participant.name}
                     </h2>
-                    <p className="text-sm text-gray-600">
-                      @{selectedConversation.participant.username}
+                    <p className="text-xs md:text-sm text-gray-600">
+                      @{selectedConversation?.participant.username}
                     </p>
                   </div>
                 </div>
-                <p className="text-sm text-gray-600 mt-3">
-                  Re: {selectedConversation.listing.title}
-                  {selectedConversation.order_id && (
-                    <span> • Order #{selectedConversation.order_id}</span>
-                  )}
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <Link
-                  href={`/listing/${selectedConversation.listing.id}`}
-                  className="text-sm text-[#5f6651] hover:underline font-medium"
-                >
-                  View Listing
-                </Link>
-                <Link
-                  href={`/profile/${selectedConversation.participant.id}`}
-                  className="text-sm text-[#5f6651] hover:underline font-medium"
-                >
-                  View Profile
-                </Link>
-              </div>
-            </div>
 
-            {/* Listing Context Card */}
-            <div className="px-6 py-4">
-              <div className="border border-gray-200 rounded-lg p-4 flex items-center gap-4">
-                <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <span className="text-2xl">🏌️</span>
+                {/* Links - Hidden on mobile */}
+                <div className="hidden md:flex gap-2">
+                  <Link
+                    href={`/listing/${selectedConversation?.listing.id || '#'}`}
+                    className="text-sm text-[#5f6651] hover:underline font-medium"
+                  >
+                    View Listing
+                  </Link>
+                  <Link
+                    href={`/profile/${selectedConversation?.participant.id || '#'}`}
+                    className="text-sm text-[#5f6651] hover:underline font-medium"
+                  >
+                    View Profile
+                  </Link>
                 </div>
-                <div className="flex-1">
-                  <p className="font-semibold text-gray-900">
-                    {selectedConversation.listing.title}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    {formatPrice(selectedConversation.listing.price)}
-                  </p>
-                </div>
-                <Link
-                  href={`/listing/${selectedConversation.listing.id}`}
-                  className="text-sm text-[#5f6651] hover:underline font-medium flex-shrink-0"
-                >
-                  View
-                </Link>
               </div>
-            </div>
 
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-              {Object.entries(groupMessagesByDate(currentMessages)).map(
-                ([date, msgs]) => (
-                  <div key={date}>
-                    <div className="flex justify-center mb-4">
-                      <span className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                        {date}
-                      </span>
-                    </div>
-                    {msgs.map((msg) => (
-                      <div
-                        key={msg.id}
-                        className={`flex ${
-                          msg.sender_is_me ? 'justify-end' : 'justify-start'
-                        } mb-3`}
-                      >
+              {/* Listing Context Card - Desktop only */}
+              <div className="hidden md:block px-6 py-4">
+                <div className="border border-gray-200 rounded-lg p-4 flex items-center gap-4">
+                  <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <span className="text-2xl">🏌️</span>
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-semibold text-gray-900">
+                      {selectedConversation?.listing.title}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      {selectedConversation && formatPrice(selectedConversation.listing.price)}
+                    </p>
+                  </div>
+                  <Link
+                    href={`/listing/${selectedConversation?.listing.id || '#'}`}
+                    className="text-sm text-[#5f6651] hover:underline font-medium flex-shrink-0"
+                  >
+                    View
+                  </Link>
+                </div>
+              </div>
+
+              {/* Messages */}
+              <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 space-y-4">
+                {Object.entries(groupMessagesByDate(currentMessages)).map(
+                  ([date, msgs]) => (
+                    <div key={date}>
+                      <div className="flex justify-center mb-4">
+                        <span className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                          {date}
+                        </span>
+                      </div>
+                      {msgs.map((msg) => (
                         <div
-                          className={`max-w-md rounded-2xl px-4 py-2 ${
-                            msg.sender_is_me
-                              ? 'bg-[#5f6651] text-white'
-                              : 'bg-gray-100 text-gray-900'
-                          }`}
+                          key={msg.id}
+                          className={`flex ${
+                            msg.sender_is_me ? 'justify-end' : 'justify-start'
+                          } mb-3`}
                         >
-                          <p className="text-sm">{msg.content}</p>
-                          <p
-                            className={`text-xs mt-1 ${
+                          <div
+                            className={`max-w-xs md:max-w-md rounded-2xl px-4 py-2 ${
                               msg.sender_is_me
-                                ? 'text-gray-100'
-                                : 'text-gray-500'
+                                ? 'bg-[#5f6651] text-white'
+                                : 'bg-gray-100 text-gray-900'
                             }`}
                           >
-                            {msg.sender_is_me ? 'You' : selectedConversation.participant.name} •{' '}
-                            {formatMessageTime(msg.sent_at)}
-                          </p>
+                            <p className="text-sm">{msg.content}</p>
+                            <p
+                              className={`text-xs mt-1 ${
+                                msg.sender_is_me
+                                  ? 'text-gray-100'
+                                  : 'text-gray-500'
+                              }`}
+                            >
+                              {msg.sender_is_me ? 'You' : selectedConversation?.participant.name} •{' '}
+                              {formatMessageTime(msg.sent_at)}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                )
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-
-            {/* Message Input */}
-            <div className="p-6 border-t border-gray-200 sticky bottom-0 bg-white">
-              <div className="flex gap-2">
-                <textarea
-                  value={messageInput}
-                  onChange={(e) => setMessageInput(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Type a message..."
-                  rows={3}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5f6651] resize-none"
-                />
-                <button
-                  onClick={handleSendMessage}
-                  disabled={!messageInput.trim()}
-                  className="bg-[#5f6651] text-white px-4 py-2 rounded-lg hover:bg-[#4a5040] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 font-medium h-fit"
-                >
-                  <Send className="w-5 h-5" />
-                  <span>Send</span>
-                </button>
+                      ))}
+                    </div>
+                  )
+                )}
+                <div ref={messagesEndRef} />
               </div>
+
+              {/* Message Input */}
+              <div className="p-4 md:p-6 border-t border-gray-200 sticky bottom-0 bg-white">
+                <div className="flex gap-2">
+                  <textarea
+                    value={messageInput}
+                    onChange={(e) => setMessageInput(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder="Type a message..."
+                    rows={3}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5f6651] resize-none"
+                  />
+                  <button
+                    onClick={handleSendMessage}
+                    disabled={!messageInput.trim()}
+                    className="bg-[#5f6651] text-white px-4 py-2 rounded-lg hover:bg-[#4a5040] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 font-medium h-fit"
+                  >
+                    <Send className="w-5 h-5" />
+                    <span className="hidden md:inline">Send</span>
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center bg-white text-gray-500">
+              <span className="text-5xl mb-4">💬</span>
+              <p className="text-lg font-medium">Select a conversation</p>
+              <p className="text-sm">to start messaging</p>
             </div>
-          </div>
-        ) : (
-          <div className="flex-1 flex flex-col items-center justify-center bg-white text-gray-500">
-            <span className="text-5xl mb-4">💬</span>
-            <p className="text-lg font-medium">Select a conversation</p>
-            <p className="text-sm">to start messaging</p>
-          </div>
-        )}
+          )}
+        </div>
+
       </div>
     </div>
   )

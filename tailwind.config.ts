@@ -18,6 +18,16 @@ const config: Config = {
       fontFamily: {
         sans: ['DM Sans', 'system-ui', 'sans-serif'],
       },
+      animation: {
+        pop: 'pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)',
+      },
+      keyframes: {
+        pop: {
+          '0%': { transform: 'scale(0)', opacity: '0' },
+          '50%': { transform: 'scale(1.1)' },
+          '100%': { transform: 'scale(1)', opacity: '1' },
+        },
+      },
     },
   },
   plugins: [],

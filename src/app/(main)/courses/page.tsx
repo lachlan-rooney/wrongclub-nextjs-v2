@@ -2,574 +2,804 @@
 
 import Link from 'next/link'
 import { useState, useMemo } from 'react'
+import { Heart } from 'lucide-react'
 
-// Type definitions
-type OfficialCourse = {
-  id: string
-  name: string
-  slug: string
-  logo_url: string | null
-  cover_image_url: string | null
-  location: string
-  description: string
-  established_year: number | null
-  website_url: string | null
-  followers_count: number
-  total_listings: number
-  total_sales: number
-  rating_score: number
-  is_founding_course: boolean
-  verified_at: string
-  created_at: string
-}
+// ==================
+// TYPE DEFINITIONS
+// ==================
 
-type HomeCourse = {
+interface Course {
   id: string
-  user_id: string
+  type: 'home' | 'official'
   name: string
   username: string
-  avatar_url: string | null
-  bio: string | null
-  terrain: 'links' | 'parkland' | 'desert' | 'mountain' | 'night_golf'
-  tier_seller: 'birdie' | 'eagle' | 'albatross' | 'hole_in_one'
-  handicap_seller: number
-  prestige_seller: number
-  followers_count: number
-  total_listings: number
-  total_sales: number
-  rating_score: number
-  is_verified_seller: boolean
-  created_at: string
+  tagline: string
+  header_image: string
+  
+  // Metrics for algorithm
+  totalSales: number
+  salesLast30Days: number
+  salesLast7Days: number
+  rating: number
+  reviewCount: number
+  repeatBuyerRate: number
+  disputeRate: number
+  
+  totalListings: number
+  newListingsLast7Days: number
+  avgDaysToSell: number
+  
+  followers: number
+  activeFollowers: number
+  responseRate: number
+  avgResponseTimeHours: number
+  
+  accountAgeDays: number
+  profileCompleteScore: number
+  
+  // Flags
+  isVerified: boolean
+  isSponsored: boolean
+  sponsorTier: 'basic' | 'premium' | 'featured' | null
+  hasNewDrop: boolean
+  dropDate: string | null
+  isFeatured: boolean
+  isNewSeller: boolean
+  
+  // Display
+  tier?: string
+  terrain?: string
+  location?: string
 }
 
-// Mock data
-const mockOfficialCourses: OfficialCourse[] = [
-  {
-    id: 'oc1',
-    name: 'Pebble Beach Pro Shop',
-    slug: 'pebble-beach',
-    logo_url: '/images/Pebble Beach.png',
-    cover_image_url: null,
-    location: 'Pebble Beach, CA',
-    description: 'Official merchandise from the iconic Pebble Beach Golf Links.',
-    established_year: 1919,
-    website_url: 'https://pebblebeach.com',
-    followers_count: 12400,
-    total_listings: 89,
-    total_sales: 1247,
-    rating_score: 4.9,
-    is_founding_course: true,
-    verified_at: '2025-01-01',
-    created_at: '2025-01-01',
-  },
-  {
-    id: 'oc2',
-    name: 'St Andrews Links Shop',
-    slug: 'st-andrews',
-    logo_url: null,
-    cover_image_url: '/images/St-Andrews---Official-Merchandise-CMYK-_1 (1).png',
-    location: 'St Andrews, Scotland',
-    description: 'The home of golf. Official merchandise and archive pieces.',
-    established_year: 1552,
-    website_url: 'https://standrews.com',
-    followers_count: 18900,
-    total_listings: 124,
-    total_sales: 2341,
-    rating_score: 5.0,
-    is_founding_course: true,
-    verified_at: '2025-01-01',
-    created_at: '2025-01-01',
-  },
-  {
-    id: 'oc3',
-    name: 'Pinehurst Resort',
-    slug: 'pinehurst',
-    logo_url: '/images/Pinehurst_1895_Logo_White.svg',
-    cover_image_url: null,
-    location: 'Pinehurst, NC',
-    description: 'Home of American golf. Tournament merchandise and resort exclusives.',
-    established_year: 1895,
-    website_url: 'https://pinehurst.com',
-    followers_count: 8700,
-    total_listings: 67,
-    total_sales: 892,
-    rating_score: 4.8,
-    is_founding_course: false,
-    verified_at: '2025-02-15',
-    created_at: '2025-02-15',
-  },
-  {
-    id: 'oc4',
-    name: 'TPC Sawgrass',
-    slug: 'tpc-sawgrass',
-    logo_url: '/images/TPC_Mark_rgb.png',
-    cover_image_url: null,
-    location: 'Ponte Vedra Beach, FL',
-    description: 'Home of THE PLAYERS Championship. Official tournament gear.',
-    established_year: 1980,
-    website_url: 'https://tpc.com/sawgrass',
-    followers_count: 6200,
-    total_listings: 45,
-    total_sales: 567,
-    rating_score: 4.7,
-    is_founding_course: false,
-    verified_at: '2025-03-01',
-    created_at: '2025-03-01',
-  },
-]
+// ==================
+// HOME COURSES DATA
+// ==================
 
-const mockHomeCourses: HomeCourse[] = [
+const homeCourses: Course[] = [
   {
     id: 'hc1',
-    user_id: 'u1',
-    name: 'Mike P.',
-    username: 'mikep',
-    avatar_url: null,
-    bio: 'Vintage golf gear collector. Always hunting for rare finds.',
+    type: 'home',
+    name: "Lachlan's Links",
+    username: 'lachlan',
+    tagline: 'Premium golf gear, priced right',
+    header_image: '/images/sarahl-header.png',
+    tier: 'eagle',
     terrain: 'links',
-    tier_seller: 'eagle',
-    handicap_seller: 14.2,
-    prestige_seller: 1,
-    followers_count: 892,
-    total_listings: 34,
-    total_sales: 127,
-    rating_score: 4.9,
-    is_verified_seller: true,
-    created_at: '2024-06-15',
+    totalSales: 47,
+    salesLast30Days: 12,
+    salesLast7Days: 4,
+    rating: 4.9,
+    reviewCount: 38,
+    repeatBuyerRate: 0.35,
+    disputeRate: 0.02,
+    totalListings: 15,
+    newListingsLast7Days: 3,
+    avgDaysToSell: 8,
+    followers: 156,
+    activeFollowers: 89,
+    responseRate: 98,
+    avgResponseTimeHours: 1.5,
+    accountAgeDays: 180,
+    profileCompleteScore: 100,
+    isVerified: true,
+    isSponsored: false,
+    sponsorTier: null,
+    hasNewDrop: false,
+    dropDate: null,
+    isFeatured: true,
+    isNewSeller: false,
   },
   {
     id: 'hc2',
-    user_id: 'u2',
-    name: 'Sarah L.',
+    type: 'home',
+    name: "Sarah's Selection",
     username: 'sarahgolf',
-    avatar_url: null,
-    bio: 'Tour player gear specialist. If it was worn on tour, I probably have it.',
+    tagline: "Tour player gear specialist. If it was worn on tour, I probably have it.",
+    header_image: '/images/sarahl-header.png',
+    tier: 'albatross',
     terrain: 'parkland',
-    tier_seller: 'albatross',
-    handicap_seller: 6.8,
-    prestige_seller: 2,
-    followers_count: 2340,
-    total_listings: 89,
-    total_sales: 412,
-    rating_score: 5.0,
-    is_verified_seller: true,
-    created_at: '2024-03-22',
+    totalSales: 89,
+    salesLast30Days: 18,
+    salesLast7Days: 6,
+    rating: 5.0,
+    reviewCount: 72,
+    repeatBuyerRate: 0.45,
+    disputeRate: 0.01,
+    totalListings: 22,
+    newListingsLast7Days: 5,
+    avgDaysToSell: 5,
+    followers: 312,
+    activeFollowers: 198,
+    responseRate: 100,
+    avgResponseTimeHours: 0.5,
+    accountAgeDays: 365,
+    profileCompleteScore: 100,
+    isVerified: true,
+    isSponsored: false,
+    sponsorTier: null,
+    hasNewDrop: false,
+    dropDate: null,
+    isFeatured: false,
+    isNewSeller: false,
   },
   {
     id: 'hc3',
-    user_id: 'u3',
-    name: 'Chris G.',
-    username: 'chrisg',
-    avatar_url: null,
-    bio: 'Desert golf enthusiast. Specializing in hot weather gear.',
-    terrain: 'desert',
-    tier_seller: 'birdie',
-    handicap_seller: 11.4,
-    prestige_seller: 0,
-    followers_count: 234,
-    total_listings: 18,
-    total_sales: 43,
-    rating_score: 4.7,
-    is_verified_seller: false,
-    created_at: '2024-09-10',
+    type: 'home',
+    name: "Mike's Vintage Golf",
+    username: 'mikep',
+    tagline: 'Vintage golf gear collector. Always hunting for rare finds.',
+    header_image: '/images/mikep-header.png',
+    tier: 'eagle',
+    terrain: 'links',
+    totalSales: 23,
+    salesLast30Days: 8,
+    salesLast7Days: 2,
+    rating: 4.8,
+    reviewCount: 19,
+    repeatBuyerRate: 0.25,
+    disputeRate: 0.04,
+    totalListings: 12,
+    newListingsLast7Days: 2,
+    avgDaysToSell: 12,
+    followers: 89,
+    activeFollowers: 45,
+    responseRate: 92,
+    avgResponseTimeHours: 3,
+    accountAgeDays: 120,
+    profileCompleteScore: 90,
+    isVerified: true,
+    isSponsored: false,
+    sponsorTier: null,
+    hasNewDrop: false,
+    dropDate: null,
+    isFeatured: false,
+    isNewSeller: false,
   },
   {
     id: 'hc4',
-    user_id: 'u4',
-    name: 'Emma K.',
-    username: 'emmak',
-    avatar_url: null,
-    bio: "Women's golf fashion curator. Making the course stylish.",
+    type: 'home',
+    name: "Tom's Golf Emporium",
+    username: 'tomb',
+    tagline: 'Headwear obsessed. 200+ hats and counting.',
+    header_image: '/images/tomb-header.png',
+    tier: 'hole_in_one',
     terrain: 'parkland',
-    tier_seller: 'eagle',
-    handicap_seller: 3.2,
-    prestige_seller: 1,
-    followers_count: 1560,
-    total_listings: 56,
-    total_sales: 189,
-    rating_score: 4.8,
-    is_verified_seller: true,
-    created_at: '2024-05-18',
+    totalSales: 892,
+    salesLast30Days: 156,
+    salesLast7Days: 34,
+    rating: 4.9,
+    reviewCount: 680,
+    repeatBuyerRate: 0.52,
+    disputeRate: 0.01,
+    totalListings: 145,
+    newListingsLast7Days: 18,
+    avgDaysToSell: 4,
+    followers: 4120,
+    activeFollowers: 2456,
+    responseRate: 99,
+    avgResponseTimeHours: 0.8,
+    accountAgeDays: 365,
+    profileCompleteScore: 100,
+    isVerified: true,
+    isSponsored: false,
+    sponsorTier: null,
+    hasNewDrop: false,
+    dropDate: null,
+    isFeatured: false,
+    isNewSeller: false,
   },
   {
     id: 'hc5',
-    user_id: 'u5',
-    name: 'Tom B.',
-    username: 'tomb',
-    avatar_url: null,
-    bio: 'Headwear obsessed. 200+ hats and counting.',
-    terrain: 'links',
-    tier_seller: 'hole_in_one',
-    handicap_seller: 2.1,
-    prestige_seller: 3,
-    followers_count: 4120,
-    total_listings: 145,
-    total_sales: 892,
-    rating_score: 4.9,
-    is_verified_seller: true,
-    created_at: '2023-11-05',
+    type: 'home',
+    name: "Chris's Desert Golf",
+    username: 'chrisg',
+    tagline: 'Desert golf enthusiast. Specializing in hot weather gear.',
+    header_image: '/images/chrisg-header.png',
+    tier: 'birdie',
+    terrain: 'desert',
+    totalSales: 31,
+    salesLast30Days: 9,
+    salesLast7Days: 3,
+    rating: 4.9,
+    reviewCount: 26,
+    repeatBuyerRate: 0.32,
+    disputeRate: 0.03,
+    totalListings: 14,
+    newListingsLast7Days: 4,
+    avgDaysToSell: 9,
+    followers: 124,
+    activeFollowers: 78,
+    responseRate: 95,
+    avgResponseTimeHours: 2,
+    accountAgeDays: 150,
+    profileCompleteScore: 95,
+    isVerified: true,
+    isSponsored: false,
+    sponsorTier: null,
+    hasNewDrop: false,
+    dropDate: null,
+    isFeatured: false,
+    isNewSeller: false,
   },
   {
     id: 'hc6',
-    user_id: 'u6',
-    name: 'Jake R.',
+    type: 'home',
+    name: "Emma's Golf Fashion",
+    username: 'emmak',
+    tagline: "Women's golf fashion curator. Making the course stylish.",
+    header_image: '/images/emmak-header.png',
+    tier: 'eagle',
+    terrain: 'parkland',
+    totalSales: 19,
+    salesLast30Days: 5,
+    salesLast7Days: 2,
+    rating: 4.6,
+    reviewCount: 14,
+    repeatBuyerRate: 0.2,
+    disputeRate: 0.05,
+    totalListings: 9,
+    newListingsLast7Days: 2,
+    avgDaysToSell: 14,
+    followers: 67,
+    activeFollowers: 38,
+    responseRate: 88,
+    avgResponseTimeHours: 4,
+    accountAgeDays: 90,
+    profileCompleteScore: 85,
+    isVerified: false,
+    isSponsored: false,
+    sponsorTier: null,
+    hasNewDrop: false,
+    dropDate: null,
+    isFeatured: false,
+    isNewSeller: false,
+  },
+  {
+    id: 'hc7',
+    type: 'home',
+    name: "Jake's Budget Finds",
     username: 'jaker',
-    avatar_url: null,
-    bio: 'Budget finds and steals. Quality gear without the price tag.',
+    tagline: 'Budget finds and steals. Quality gear without the price tag.',
+    header_image: '/images/jaker-header.png',
+    tier: 'birdie',
     terrain: 'links',
-    tier_seller: 'birdie',
-    handicap_seller: 16.5,
-    prestige_seller: 0,
-    followers_count: 89,
-    total_listings: 12,
-    total_sales: 18,
-    rating_score: 4.5,
-    is_verified_seller: false,
-    created_at: '2025-01-02',
+    totalSales: 8,
+    salesLast30Days: 2,
+    salesLast7Days: 0,
+    rating: 4.7,
+    reviewCount: 6,
+    repeatBuyerRate: 0.1,
+    disputeRate: 0.0,
+    totalListings: 6,
+    newListingsLast7Days: 0,
+    avgDaysToSell: 18,
+    followers: 23,
+    activeFollowers: 12,
+    responseRate: 80,
+    avgResponseTimeHours: 8,
+    accountAgeDays: 45,
+    profileCompleteScore: 70,
+    isVerified: false,
+    isSponsored: false,
+    sponsorTier: null,
+    hasNewDrop: false,
+    dropDate: null,
+    isFeatured: false,
+    isNewSeller: true,
   },
 ]
 
-// Styling constants
-const terrainStyles: Record<string, string> = {
-  links: 'bg-gradient-to-br from-green-200 to-green-400',
-  parkland: 'bg-gradient-to-br from-green-300 to-emerald-500',
-  desert: 'bg-gradient-to-br from-amber-200 to-orange-400',
-  mountain: 'bg-gradient-to-br from-slate-300 to-slate-500',
-  night_golf: 'bg-gradient-to-br from-indigo-800 to-purple-900',
-}
+// ==================
+// OFFICIAL COURSES DATA
+// ==================
 
-const tierInfo: Record<string, { name: string; emoji: string; color: string }> = {
-  birdie: { name: 'Birdie', emoji: '🐦', color: 'bg-green-500' },
-  eagle: { name: 'Eagle', emoji: '🦅', color: 'bg-blue-500' },
-  albatross: { name: 'Albatross', emoji: '🌟', color: 'bg-purple-500' },
-  hole_in_one: { name: 'Hole-in-One', emoji: '🏆', color: 'bg-yellow-500' },
-}
+const officialCourses: Course[] = [
+  {
+    id: 'oc1',
+    type: 'official',
+    name: 'St Andrews Links',
+    username: 'st-andrews',
+    tagline: 'The Home of Golf - Official Pro Shop',
+    header_image: '/images/St-Andrews---Official-Merchandise-CMYK-_1 (1).png',
+    location: 'St Andrews, Scotland',
+    totalSales: 156,
+    salesLast30Days: 22,
+    salesLast7Days: 5,
+    rating: 4.8,
+    reviewCount: 120,
+    repeatBuyerRate: 0.28,
+    disputeRate: 0.01,
+    totalListings: 45,
+    newListingsLast7Days: 3,
+    avgDaysToSell: 10,
+    followers: 890,
+    activeFollowers: 456,
+    responseRate: 95,
+    avgResponseTimeHours: 4,
+    accountAgeDays: 400,
+    profileCompleteScore: 100,
+    isVerified: true,
+    isSponsored: true,
+    sponsorTier: 'featured',
+    hasNewDrop: true,
+    dropDate: '2026-02-10',
+    isFeatured: false,
+    isNewSeller: false,
+  },
+  {
+    id: 'oc2',
+    type: 'official',
+    name: 'Pebble Beach Pro Shop',
+    username: 'pebble-beach',
+    tagline: 'Where Champions Play - Official Merchandise',
+    header_image: '/images/Pebble Beach.png',
+    location: 'Pebble Beach, California',
+    totalSales: 89,
+    salesLast30Days: 12,
+    salesLast7Days: 2,
+    rating: 4.7,
+    reviewCount: 65,
+    repeatBuyerRate: 0.22,
+    disputeRate: 0.02,
+    totalListings: 38,
+    newListingsLast7Days: 1,
+    avgDaysToSell: 14,
+    followers: 654,
+    activeFollowers: 312,
+    responseRate: 90,
+    avgResponseTimeHours: 6,
+    accountAgeDays: 350,
+    profileCompleteScore: 100,
+    isVerified: true,
+    isSponsored: true,
+    sponsorTier: 'premium',
+    hasNewDrop: false,
+    dropDate: null,
+    isFeatured: false,
+    isNewSeller: false,
+  },
+  {
+    id: 'oc3',
+    type: 'official',
+    name: 'Pinehurst Resort',
+    username: 'pinehurst',
+    tagline: 'Home of American Golf - Official Resort Shop',
+    header_image: '/images/Pinehurst_1895_Logo_White.svg',
+    location: 'Pinehurst, North Carolina',
+    totalSales: 67,
+    salesLast30Days: 9,
+    salesLast7Days: 1,
+    rating: 4.6,
+    reviewCount: 48,
+    repeatBuyerRate: 0.18,
+    disputeRate: 0.03,
+    totalListings: 32,
+    newListingsLast7Days: 0,
+    avgDaysToSell: 16,
+    followers: 421,
+    activeFollowers: 189,
+    responseRate: 88,
+    avgResponseTimeHours: 8,
+    accountAgeDays: 300,
+    profileCompleteScore: 95,
+    isVerified: true,
+    isSponsored: true,
+    sponsorTier: 'basic',
+    hasNewDrop: false,
+    dropDate: null,
+    isFeatured: false,
+    isNewSeller: false,
+  },
+  {
+    id: 'oc4',
+    type: 'official',
+    name: 'TPC Sawgrass',
+    username: 'tpc-sawgrass',
+    tagline: 'Home of THE PLAYERS Championship - Official Tournament Gear',
+    header_image: '/images/TPC_Mark_rgb.png',
+    location: 'Ponte Vedra Beach, Florida',
+    totalSales: 45,
+    salesLast30Days: 6,
+    salesLast7Days: 1,
+    rating: 4.5,
+    reviewCount: 32,
+    repeatBuyerRate: 0.15,
+    disputeRate: 0.04,
+    totalListings: 28,
+    newListingsLast7Days: 0,
+    avgDaysToSell: 19,
+    followers: 312,
+    activeFollowers: 134,
+    responseRate: 85,
+    avgResponseTimeHours: 12,
+    accountAgeDays: 280,
+    profileCompleteScore: 90,
+    isVerified: true,
+    isSponsored: false,
+    sponsorTier: null,
+    hasNewDrop: false,
+    dropDate: null,
+    isFeatured: false,
+    isNewSeller: false,
+  },
+]
 
-// Helper functions
-function searchCourses(courses: any[], query: string) {
-  const q = query.toLowerCase().trim()
-  if (!q) return courses
+// ==================
+// RANKING ALGORITHM
+// ==================
 
-  return courses.filter((course) => {
-    const name = course.name?.toLowerCase() || ''
-    const username = course.username?.toLowerCase() || ''
-    const location = course.location?.toLowerCase() || ''
-    const bio = course.bio?.toLowerCase() || ''
+const calculateCourseScore = (course: Course): number => {
+  let score = 0
+  let penalties = 0
 
-    return name.includes(q) || username.includes(q) || location.includes(q) || bio.includes(q)
-  })
-}
+  // ==================
+  // CORE METRICS (0-200 points)
+  // ==================
 
-function sortCourses(courses: any[], sortBy: string) {
-  const sorted = [...courses]
+  // 1. SALES VELOCITY - Primary signal (recent sales weighted heavily)
+  const velocityScore =
+    course.salesLast7Days * 15 +
+    course.salesLast30Days * 5 +
+    Math.log10(course.totalSales + 1) * 10
+  score += Math.min(velocityScore, 150)
 
-  switch (sortBy) {
-    case 'most_popular':
-      return sorted.sort((a, b) => {
-        const tierOrder: Record<string, number> = { hole_in_one: 4, albatross: 3, eagle: 2, birdie: 1 }
-        const aTier = 'tier_seller' in a ? (tierOrder[a.tier_seller as string] ?? 5) : 5
-        const bTier = 'tier_seller' in b ? (tierOrder[b.tier_seller as string] ?? 5) : 5
-        if (aTier !== bTier) return bTier - aTier
-        return b.total_sales - a.total_sales
-      })
+  // 2. RATING QUALITY - Weighted by review count
+  const ratingConfidence = Math.min(course.reviewCount / 20, 1)
+  const ratingScore = (course.rating - 4.0) * 50 * ratingConfidence
+  score += Math.max(ratingScore, 0)
 
-    case 'highest_rated':
-      return sorted.sort((a, b) => b.rating_score - a.rating_score)
+  // 3. INVENTORY FRESHNESS
+  const freshnessScore =
+    course.newListingsLast7Days * 8 +
+    (course.totalListings > 5 ? 10 : 0) +
+    (course.avgDaysToSell < 14 ? 15 : 0)
+  score += Math.min(freshnessScore, 50)
 
-    case 'most_sales':
-      return sorted.sort((a, b) => b.total_sales - a.total_sales)
+  // ==================
+  // TRUST SIGNALS (0-75 points)
+  // ==================
 
-    case 'newest':
-      return sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+  // 4. REPEAT BUYERS - Best trust signal
+  score += course.repeatBuyerRate * 40
 
-    default:
-      return sorted
+  // 5. DISPUTE RATE - Low disputes = trustworthy
+  score += Math.max(0, 20 - course.disputeRate * 200)
+
+  // 6. RESPONSE QUALITY
+  const responseScore =
+    (course.responseRate / 100) * 10 + (course.avgResponseTimeHours < 2 ? 5 : 0)
+  score += responseScore
+
+  // ==================
+  // ENGAGEMENT (0-50 points)
+  // ==================
+
+  // 7. ACTIVE FOLLOWERS (diminishing returns)
+  score += Math.log10(course.activeFollowers + 1) * 15
+
+  // 8. PROFILE COMPLETENESS
+  score += (course.profileCompleteScore / 100) * 10
+
+  // ==================
+  // BOOSTS
+  // ==================
+
+  // 9. NEW SELLER BOOST (decays over 30 days)
+  if (course.isNewSeller && course.accountAgeDays < 30) {
+    score += 30 - course.accountAgeDays
   }
+
+  // 10. STAFF FEATURED
+  if (course.isFeatured) score += 50
+
+  // 11. NEW DROP (decays over 7 days)
+  if (course.hasNewDrop && course.dropDate) {
+    const dropDate = new Date(course.dropDate)
+    const now = new Date()
+    const daysSinceDrop = Math.floor(
+      (now.getTime() - dropDate.getTime()) / (1000 * 60 * 60 * 24)
+    )
+    const dropBoost = Math.max(0, 35 - daysSinceDrop * 5)
+    score += dropBoost
+  }
+
+  // 12. SPONSORED (Official only, capped)
+  if (course.isSponsored && course.type === 'official') {
+    const sponsorBoosts: Record<string, number> = {
+      basic: 30,
+      premium: 50,
+      featured: 75,
+    }
+    score += sponsorBoosts[course.sponsorTier || ''] || 0
+  }
+
+  // ==================
+  // HOME COURSE PRIORITY
+  // ==================
+
+  // 13. HOME COURSE BONUS - Community sellers get inherent boost
+  if (course.type === 'home') {
+    score += 25
+  }
+
+  // ==================
+  // ANTI-GAMING PENALTIES
+  // ==================
+
+  // 14. Low review-to-sale ratio is suspicious
+  const reviewRatio = course.reviewCount / (course.totalSales || 1)
+  if (course.totalSales > 10 && reviewRatio < 0.1) {
+    penalties += 15
+  }
+
+  // 15. Very new account with high sales = suspicious
+  if (course.accountAgeDays < 14 && course.salesLast7Days > 10) {
+    penalties += 40
+  }
+
+  return Math.max(0, score - penalties)
 }
+
+// ==================
+// DISPLAY LOGIC
+// ==================
+
+const getDisplayCourses = (
+  allCourses: Course[],
+  tab: 'all' | 'home' | 'official'
+): Course[] => {
+  // Calculate scores and sort
+  const withScores = allCourses
+    .map((c) => ({
+      ...c,
+      score: calculateCourseScore(c),
+    }))
+    .sort((a, b) => b.score - a.score)
+
+  // Filter by tab
+  if (tab === 'home') {
+    return withScores.filter((c) => c.type === 'home')
+  }
+  if (tab === 'official') {
+    return withScores.filter((c) => c.type === 'official')
+  }
+
+  // "All" tab - enforce ~4:1 home:official ratio
+  const homeCoursesFiltered = withScores.filter((c) => c.type === 'home')
+  const officialCoursesFiltered = withScores.filter((c) => c.type === 'official')
+
+  const result: (Course & { score: number })[] = []
+  let homeIndex = 0
+  let officialIndex = 0
+
+  const totalToShow = homeCoursesFiltered.length + officialCoursesFiltered.length
+
+  for (let i = 0; i < totalToShow; i++) {
+    // Every 5th slot CAN be official if they qualify
+    if ((i + 1) % 5 === 0 && officialIndex < officialCoursesFiltered.length) {
+      const official = officialCoursesFiltered[officialIndex]
+      const nextHome = homeCoursesFiltered[homeIndex]
+
+      // Official must score within 80% of next home course to earn the slot
+      if (!nextHome || official.score >= nextHome.score * 0.8) {
+        result.push(official)
+        officialIndex++
+        continue
+      }
+    }
+
+    // Otherwise show home course
+    if (homeIndex < homeCoursesFiltered.length) {
+      result.push(homeCoursesFiltered[homeIndex])
+      homeIndex++
+    } else if (officialIndex < officialCoursesFiltered.length) {
+      result.push(officialCoursesFiltered[officialIndex])
+      officialIndex++
+    }
+  }
+
+  return result
+}
+
+// ==================
+// PAGE COMPONENT
+// ==================
 
 export default function CoursesPage() {
-  const [activeTab, setActiveTab] = useState<'all' | 'official' | 'home'>('all')
-  const [sortBy, setSortBy] = useState('most_popular')
-  const [searchQuery, setSearchQuery] = useState('')
-  const [followingIds, setFollowingIds] = useState<Set<string>>(new Set())
+  const [activeTab, setActiveTab] = useState<'all' | 'home' | 'official'>('all')
+  const [favorites, setFavorites] = useState<Set<string>>(new Set())
+  const isLoggedIn = false // Mock - replace with real auth check
 
-  const handleFollow = (id: string) => {
-    const newFollowing = new Set(followingIds)
-    if (newFollowing.has(id)) {
-      newFollowing.delete(id)
-    } else {
-      newFollowing.add(id)
-    }
-    setFollowingIds(newFollowing)
+  const allCourses = useMemo(() => [...homeCourses, ...officialCourses], [])
+  const displayedCourses = useMemo(
+    () => getDisplayCourses(allCourses, activeTab),
+    [allCourses, activeTab]
+  )
+
+  const tierColors: Record<string, string> = {
+    hole_in_one: 'bg-purple-100 text-purple-700',
+    albatross: 'bg-blue-100 text-blue-700',
+    eagle: 'bg-green-100 text-green-700',
+    birdie: 'bg-yellow-100 text-yellow-700',
   }
 
-  // Filter and search courses
-  const filteredCourses = useMemo(() => {
-    let courses: any[] = []
+  const tierEmojis: Record<string, string> = {
+    hole_in_one: '🏆',
+    albatross: '🌟',
+    eagle: '🦅',
+    birdie: '🐦',
+  }
 
-    if (activeTab === 'all' || activeTab === 'official') {
-      courses = [...courses, ...mockOfficialCourses]
+  const handleFavorite = (e: React.MouseEvent, courseId: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    if (!isLoggedIn) {
+      window.location.href = '/login'
+      return
     }
-    if (activeTab === 'all' || activeTab === 'home') {
-      courses = [...courses, ...mockHomeCourses]
-    }
 
-    courses = searchCourses(courses, searchQuery)
-    courses = sortCourses(courses, sortBy)
-
-    return courses
-  }, [activeTab, searchQuery, sortBy])
-
-  const officialCourses = filteredCourses.filter((c) => !('tier_seller' in c))
-  const homeCourses = filteredCourses.filter((c) => 'tier_seller' in c)
+    setFavorites((prev) => {
+      const newFavorites = new Set(prev)
+      if (newFavorites.has(courseId)) {
+        newFavorites.delete(courseId)
+      } else {
+        newFavorites.add(courseId)
+      }
+      return newFavorites
+    })
+  }
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Hero Section */}
-      <div className="bg-gray-50 px-6 py-6 border-b border-gray-200">
-        <div className="max-w-6xl mx-auto">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Courses</h1>
-          <p className="text-gray-600 text-base mb-4">Discover sellers and official pro shops</p>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-100">
+          <div className="max-w-6xl mx-auto px-4 md:px-6 py-8">
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
+              Explore Courses
+            </h1>
+            <p className="text-gray-600 mt-2">
+              Discover community sellers and official pro shops
+            </p>
 
-          {/* Search Bar */}
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Search courses..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#5f6651] focus:border-transparent text-sm"
-            />
-            <svg className="absolute right-3 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+            {/* Tabs */}
+            <div className="flex gap-2 mt-6 flex-wrap">
+              {[
+                { key: 'all' as const, label: 'All' },
+                { key: 'home' as const, label: 'Home Courses' },
+                { key: 'official' as const, label: 'Official Pro Shops' },
+              ].map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                    activeTab === tab.key
+                      ? 'bg-[#5f6651] text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Filter Bar */}
-      <div className="bg-white px-6 py-3 border-b border-gray-200">
-        <div className="max-w-6xl mx-auto flex items-center justify-between gap-6">
-          {/* Tabs */}
-          <div className="flex gap-1">
-            {[
-              { id: 'all', label: 'All' },
-              { id: 'official', label: 'Official Courses' },
-              { id: 'home', label: 'Home Courses' },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  activeTab === tab.id
-                    ? 'bg-[#5f6651] text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
+        {/* Courses Grid */}
+        <div className="max-w-6xl mx-auto px-4 md:px-6 py-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {displayedCourses.map((course) => (
+              <Link
+                key={course.id}
+                href={`/course/${course.username}`}
+                className="group block bg-white rounded-2xl overflow-hidden border border-gray-100 hover:shadow-lg transition-all"
               >
-                {tab.label}
-              </button>
+                {/* Header image */}
+                <div className="h-36 md:h-44 bg-gray-200 overflow-hidden relative">
+                  <img
+                    src={course.header_image}
+                    alt={course.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    onError={(e) => {
+                      ;(e.target as HTMLImageElement).src =
+                        '/images/wrong-club-page.png'
+                    }}
+                  />
+
+                  {/* Badges */}
+                  <div className="absolute top-3 left-3 flex gap-2 flex-wrap z-10">
+                    {course.type === 'official' && (
+                      <span className="px-2 py-1 bg-blue-600 text-white text-xs font-bold rounded-full">
+                        Official
+                      </span>
+                    )}
+                    {course.isFeatured && (
+                      <span className="px-2 py-1 bg-amber-500 text-white text-xs font-bold rounded-full">
+                        ⭐ Featured
+                      </span>
+                    )}
+                    {course.hasNewDrop && (
+                      <span className="px-2 py-1 bg-red-500 text-white text-xs font-bold rounded-full">
+                        New Drop
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Favorite heart button */}
+                  <button
+                    onClick={(e) => handleFavorite(e, course.id)}
+                    className="absolute top-3 right-3 w-9 h-9 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white transition-colors shadow-sm z-10"
+                  >
+                    <Heart
+                      className={`w-5 h-5 transition-colors ${
+                        favorites.has(course.id)
+                          ? 'fill-red-500 text-red-500'
+                          : 'text-gray-600 hover:text-red-500'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Info */}
+                <div className="p-4">
+                  <div className="flex items-start gap-3">
+                    {/* Avatar */}
+                    <div className="w-12 h-12 bg-[#5f6651] text-white rounded-full flex items-center justify-center font-bold text-lg -mt-10 border-4 border-white shadow-md flex-shrink-0 relative z-10">
+                      {course.name.charAt(0)}
+                    </div>
+                    <div className="flex-1 min-w-0 pt-1">
+                      <h3 className="font-bold text-gray-900 truncate">
+                        {course.name}
+                      </h3>
+                      <p className="text-sm text-gray-500">@{course.username}</p>
+                    </div>
+                  </div>
+
+                  <p className="text-sm text-gray-600 mt-3 line-clamp-1">
+                    {course.tagline}
+                  </p>
+
+                  {/* Stats */}
+                  <div className="flex items-center gap-2 mt-3 text-sm text-gray-500 flex-wrap">
+                    <span className="flex items-center gap-1">
+                      <span className="text-amber-500">★</span>
+                      {course.rating}
+                    </span>
+                    <span>•</span>
+                    <span>{course.followers} followers</span>
+                    <span>•</span>
+                    <span>{course.totalListings} items</span>
+                  </div>
+
+                  {/* Tier badge for home courses */}
+                  {course.type === 'home' && course.tier && (
+                    <div className="mt-3">
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${tierColors[course.tier] || 'bg-gray-100 text-gray-700'}`}
+                      >
+                        {tierEmojis[course.tier]}
+                        {course.tier.replace('_', ' ')}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Location for official courses */}
+                  {course.type === 'official' && course.location && (
+                    <p className="text-xs text-gray-400 mt-2">📍 {course.location}</p>
+                  )}
+                </div>
+              </Link>
             ))}
           </div>
 
-          {/* Sort Dropdown */}
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-sm font-medium cursor-pointer hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-[#5f6651]"
-          >
-            <option value="most_popular">Most Popular</option>
-            <option value="highest_rated">Highest Rated</option>
-            <option value="most_sales">Most Sales</option>
-            <option value="newest">Newest</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <main className="px-6 py-8">
-        <div className="max-w-6xl mx-auto">
-          {filteredCourses.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-600 text-lg mb-4">No courses found matching your search</p>
-              <button
-                onClick={() => {
-                  setSearchQuery('')
-                  setActiveTab('all')
-                }}
-                className="px-6 py-2 bg-[#5f6651] text-white rounded-lg font-semibold hover:bg-[#4a5040] transition-colors"
-              >
-                Clear Filters
-              </button>
+          {/* Empty state */}
+          {displayedCourses.length === 0 && (
+            <div className="text-center py-16">
+              <p className="text-gray-500">No courses found</p>
             </div>
-          ) : (
-            <>
-              {/* Official Courses Section */}
-              {(activeTab === 'all' || activeTab === 'official') && officialCourses.length > 0 && (
-                <div className="mb-16">
-                  <div className="mb-6">
-                    <div className="flex items-center gap-2 mb-2">
-                      <h2 className="text-2xl font-bold text-gray-900">Official Courses</h2>
-                      <span className="text-xl">✓</span>
-                    </div>
-                    <p className="text-gray-600">Verified golf course pro shops</p>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {officialCourses.map((course: OfficialCourse) => (
-                      <div
-                        key={course.id}
-                        className="bg-white rounded-xl border border-gray-200 overflow-visible hover:shadow-lg hover:-translate-y-2 transition-all flex flex-col"
-                      >
-                        {/* Cover Image */}
-                        <div className="relative w-full h-40 bg-gradient-to-br from-blue-100 to-blue-300 flex items-center justify-center pb-8 rounded-t-xl overflow-hidden">
-                          {course.id === 'oc2' && course.cover_image_url ? (
-                            // St Andrews - smaller image
-                            <img
-                              src={course.cover_image_url}
-                              alt={course.name}
-                              className="h-28 w-auto object-contain"
-                            />
-                          ) : course.cover_image_url ? (
-                            // Other cover images - full size
-                            <img
-                              src={course.cover_image_url}
-                              alt={course.name}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : course.logo_url ? (
-                            <img
-                              src={course.logo_url}
-                              alt={course.name}
-                              className="w-20 h-20 object-contain"
-                            />
-                          ) : (
-                            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-100 to-blue-300 flex items-center justify-center text-4xl shadow-lg border-4 border-white">
-                              ⛳
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Content */}
-                        <div className="px-4 pt-6 pb-4 flex-1 flex flex-col">
-                          <h3 className="font-bold text-gray-900 text-lg mb-1">{course.name}</h3>
-                          {course.is_founding_course && (
-                            <p className="text-xs text-purple-600 font-semibold mb-2">🏆 Founding Course</p>
-                          )}
-                          <p className="text-sm text-gray-600 mb-3 flex items-start gap-1">
-                            <span>📍</span>
-                            <span>{course.location}</span>
-                          </p>
-
-                          {/* Stats */}
-                          <div className="text-xs text-gray-600 space-y-1 mb-4 flex-1">
-                            <p>⭐ {course.rating_score.toFixed(1)} • {course.total_sales} sales</p>
-                            <p>👥 {(course.followers_count / 1000).toFixed(1)}K followers</p>
-                          </div>
-
-                          {/* Actions */}
-                          <div className="flex gap-2">
-                            <Link
-                              href={`/course/${course.slug}`}
-                              className="flex-1 py-2 bg-[#5f6651] text-white text-center rounded-lg text-sm font-semibold hover:bg-[#4a5040] transition-colors"
-                            >
-                              View Course
-                            </Link>
-                            <button
-                              onClick={() => handleFollow(course.id)}
-                              className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                                followingIds.has(course.id)
-                                  ? 'bg-gray-200 text-gray-900 hover:bg-gray-300'
-                                  : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
-                              }`}
-                            >
-                              {followingIds.has(course.id) ? 'Following ✓' : 'Follow'}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Home Courses Section */}
-              {(activeTab === 'all' || activeTab === 'home') && homeCourses.length > 0 && (
-                <div>
-                  <div className="mb-6">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-2">Home Courses</h2>
-                    <p className="text-gray-600">Community sellers</p>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {homeCourses.map((course: HomeCourse) => (
-                      <div
-                        key={course.id}
-                        className="bg-white rounded-xl border border-gray-200 overflow-visible hover:shadow-lg hover:-translate-y-2 transition-all flex flex-col"
-                      >
-                        {/* Terrain Background */}
-                        <div className={`relative w-full h-40 ${terrainStyles[course.terrain]} rounded-t-xl`} />
-
-                        {/* Avatar - Overlapping */}
-                        <div className="relative px-4 -mt-8 mb-2 z-10">
-                          <div className={`w-16 h-16 ${tierInfo[course.tier_seller].color} rounded-full flex items-center justify-center text-2xl font-bold text-white shadow-lg border-4 border-white`}>
-                            {course.name.charAt(0)}
-                          </div>
-                        </div>
-
-                        {/* Content */}
-                        <div className="px-4 pb-4 flex-1 flex flex-col">
-                          <div className="mb-3">
-                            <h3 className="font-bold text-gray-900 text-lg">{course.name}</h3>
-                            <p className="text-sm text-gray-600">@{course.username}</p>
-                            <div className="flex items-center gap-2 mt-1 text-xs text-gray-600">
-                              <span>{tierInfo[course.tier_seller].emoji}</span>
-                              <span>{tierInfo[course.tier_seller].name}</span>
-                              <span>•</span>
-                              <span>{course.handicap_seller.toFixed(1)} handicap</span>
-                            </div>
-                          </div>
-
-                          {course.bio && <p className="text-sm text-gray-600 mb-3 line-clamp-2 flex-1">{course.bio}</p>}
-
-                          {/* Stats */}
-                          <div className="text-xs text-gray-600 space-y-1 mb-4">
-                            <p>⭐ {course.rating_score.toFixed(1)} • {course.total_sales} sales</p>
-                            <p>👥 {course.followers_count} followers</p>
-                          </div>
-
-                          {course.is_verified_seller && (
-                            <p className="text-xs text-green-600 font-semibold mb-3">✓ Verified Seller</p>
-                          )}
-
-                          {/* Actions */}
-                          <div className="flex gap-2">
-                            <Link
-                              href={`/course/${course.username}`}
-                              className="flex-1 py-2 bg-[#5f6651] text-white text-center rounded-lg text-sm font-semibold hover:bg-[#4a5040] transition-colors"
-                            >
-                              View Course
-                            </Link>
-                            <button
-                              onClick={() => handleFollow(course.id)}
-                              className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                                followingIds.has(course.id)
-                                  ? 'bg-gray-200 text-gray-900 hover:bg-gray-300'
-                                  : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
-                              }`}
-                            >
-                              {followingIds.has(course.id) ? 'Following ✓' : 'Follow'}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </>
           )}
         </div>
-      </main>
     </div>
   )
 }

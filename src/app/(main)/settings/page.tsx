@@ -3,8 +3,9 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
 
-// Mock data
+// Mock data (profile data will come from auth context)
 const mockSettings = {
   account: {
     name: 'Lachlan',
@@ -102,6 +103,7 @@ function ToggleSwitch({ enabled, onChange }: { enabled: boolean; onChange: (valu
 }
 
 export default function SettingsPage() {
+  const { profile, isLoading } = useAuth()
   const [settings, setSettings] = useState(mockSettings)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
@@ -109,6 +111,15 @@ export default function SettingsPage() {
   const [privacy, setPrivacy] = useState(mockSettings.privacy)
   const [sizes, setSizes] = useState(mockSettings.sizes)
   const [seller, setSeller] = useState(mockSettings.seller)
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 pt-20 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#5f6651]"></div>
+      </div>
+    )
+  }
 
   const scrollToSection = (sectionId: string) => {
     const element = document.getElementById(sectionId)
@@ -171,7 +182,7 @@ export default function SettingsPage() {
             <p className="text-sm font-semibold text-gray-700 mb-4">Profile Photo</p>
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 bg-[#5f6651] text-white rounded-full flex items-center justify-center text-2xl font-bold">
-                L
+                {(profile?.display_name || profile?.username || 'U')[0].toUpperCase()}
               </div>
               <button className="px-4 py-2 bg-gray-100 text-gray-900 rounded-lg font-medium hover:bg-gray-200">
                 Change Photo
@@ -184,7 +195,7 @@ export default function SettingsPage() {
             <label className="block text-sm font-semibold text-gray-700 mb-2">Display Name</label>
             <input
               type="text"
-              defaultValue={settings.account.name}
+              defaultValue={profile?.display_name || ''}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5f6651]"
             />
           </div>
@@ -194,7 +205,7 @@ export default function SettingsPage() {
             <label className="block text-sm font-semibold text-gray-700 mb-2">Username</label>
             <input
               type="text"
-              defaultValue={`@${settings.account.username}`}
+              defaultValue={`@${profile?.username || ''}`}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5f6651] bg-gray-50"
               disabled
             />
@@ -206,14 +217,12 @@ export default function SettingsPage() {
             <div className="flex gap-2">
               <input
                 type="email"
-                defaultValue={settings.account.email}
+                defaultValue={profile?.email || ''}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5f6651]"
               />
-              {settings.account.email_verified && (
-                <button className="px-4 py-2 bg-green-100 text-green-700 rounded-lg font-medium text-sm">
-                  ✓ Verified
-                </button>
-              )}
+              <button className="px-4 py-2 bg-green-100 text-green-700 rounded-lg font-medium text-sm">
+                ✓ Verified
+              </button>
             </div>
           </div>
 

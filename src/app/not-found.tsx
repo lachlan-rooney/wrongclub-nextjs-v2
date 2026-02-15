@@ -2,8 +2,11 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 
 export default function NotFound() {
+  const router = useRouter()
+
   return (
     <div className="min-h-screen bg-white flex flex-col items-center justify-center px-6 overflow-hidden">
       {/* Wrong Page PNG - Big and wide */}
@@ -32,17 +35,17 @@ export default function NotFound() {
 
       {/* CTA Buttons */}
       <div className="flex gap-3 justify-center">
-        <Link
-          href="/"
+        <button
+          onClick={() => router.back()}
           className="px-6 py-2 bg-[#5f6651] text-white rounded-full font-bold hover:bg-[#4a5040] transition-colors text-sm"
         >
-          Home
-        </Link>
+          Back
+        </button>
         <Link
-          href="/browse"
+          href="/"
           className="px-6 py-2 border-2 border-[#5f6651] text-[#5f6651] rounded-full font-bold hover:bg-[#5f6651] hover:text-white transition-colors text-sm"
         >
-          Browse
+          Home
         </Link>
       </div>
     </div>

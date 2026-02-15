@@ -3,8 +3,10 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Heart, Share2, X, ChevronLeft, ChevronRight, MessageCircle, ArrowLeft } from 'lucide-react'
+import { Heart, Share2, X, ChevronLeft, ChevronRight, MessageCircle, ArrowLeft, Shield, Truck, Check } from 'lucide-react'
 import { useParams } from 'next/navigation'
+import { ImageCarousel } from '@/components/ImageCarousel'
+import { BuyBar } from '@/components/BuyBar'
 
 interface ListingData {
   id: string
@@ -29,11 +31,11 @@ interface ListingData {
   }
 }
 
-const tierEmojis = {
-  birdie: '🐦',
-  eagle: '🦅',
-  albatross: '🪶',
-  hole_in_one: '⭐',
+const tierLabels = {
+  birdie: 'Birdie',
+  eagle: 'Eagle',
+  albatross: 'Albatross',
+  hole_in_one: 'Official',
 }
 
 const mockListings: ListingData[] = [
@@ -507,437 +509,352 @@ export default function ListingPage() {
   const router = useRouter()
   const params = useParams()
   const id = params.id as string
-  const [selectedImage, setSelectedImage] = useState(0)
-  const [lightboxOpen, setLightboxOpen] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [addedToCart, setAddedToCart] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
-  const [zipCode, setZipCode] = useState('')
-  const [shippingCalculated, setShippingCalculated] = useState(false)
+  const [scrollY, setScrollY] = useState(0)
 
   const listing = mockListings.find((l) => l.id === id) || mockListings[0]
   const images = [listing.img, listing.img, listing.img, listing.img, listing.img]
-  const sellerListings = mockListings.filter((l) => l.seller.username === listing.seller.username && l.id !== listing.id)
   const similarListings = mockListings.filter((l) => l.category === listing.category && l.id !== listing.id)
+  const isCollab = listing.brand.includes(' x ')
 
   useEffect(() => {
     setIsMounted(true)
+    const handleScroll = () => setScrollY(window.scrollY)
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  const handleAddToCart = () => {
-    setAddedToCart(true)
-    setTimeout(() => setAddedToCart(false), 2000)
-  }
-
-  const calculateShipping = () => {
-    if (zipCode.length >= 5) {
-      setShippingCalculated(true)
-    }
-  }
-
   return (
-    <div className="pb-24">
-      {/* Close Button */}
-      <button
-        onClick={() => router.back()}
-        className="fixed top-24 right-4 md:right-6 z-40 p-2 rounded-full hover:bg-gray-100 transition-colors"
-        aria-label="Go back"
+    <div className="bg-white">
+      {/* Detail Nav - becomes frosted glass on scroll */}
+      <nav
+        className="sticky top-0 z-30 transition-all duration-300"
+        style={{
+          backgroundColor:
+            scrollY > 20
+              ? 'rgba(250, 249, 246, 0.95)'
+              : 'rgba(255, 255, 255, 0)',
+          backdropFilter: scrollY > 20 ? 'blur(20px)' : 'none',
+        }}
       >
-        <ArrowLeft className="w-6 h-6 text-[#5f6651] scale-[1.015]" />
-      </button>
+        <div className="px-4 py-3 flex items-center justify-between">
+          {/* Back Button */}
+          <button
+            onClick={() => router.back()}
+            className="flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/90 backdrop-blur flex items-center justify-center transition-all hover:bg-white active:scale-95"
+          >
+            <ArrowLeft size={20} className="text-[var(--charcoal)]" />
+          </button>
 
-      {/* Breadcrumb */}
-      <div className="px-4 md:px-6 pb-4">
-        <div className="flex items-center gap-2 text-sm text-gray-500">
-          <Link href="/browse" className="hover:text-[#5f6651] transition-colors">
-            Browse
-          </Link>
-          <span>/</span>
-          <span className="capitalize">{listing.category}</span>
-          <span>/</span>
-          <span className="text-gray-900 font-medium truncate">{listing.title}</span>
+          {/* Share & Heart */}
+          <div className="flex items-center gap-2">
+            <button className="flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/90 backdrop-blur flex items-center justify-center transition-all hover:bg-white active:scale-95">
+              <Share2 size={20} className="text-[var(--charcoal)]" />
+            </button>
+            <button
+              onClick={() => setSaved(!saved)}
+              className={`flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-full backdrop-blur flex items-center justify-center transition-all active:scale-95 ${
+                saved
+                  ? 'bg-[var(--brand)]'
+                  : 'bg-white/90 hover:bg-white'
+              }`}
+            >
+              <Heart
+                size={20}
+                className={saved ? 'text-white fill-current' : 'text-[var(--charcoal)]'}
+              />
+            </button>
+          </div>
         </div>
+      </nav>
+
+      {/* MOBILE LAYOUT - only shows below md breakpoint */}
+      <div className="md:hidden pb-28">
+        {/* Image Carousel */}
+        <ImageCarousel images={images} alt={listing.title} />
+
+        {/* Product Info */}
+        <div className="px-4 sm:px-6 py-5">
+        {/* Brand + Collab Badge */}
+        <div className="flex items-center gap-2 mb-2">
+          <p className="text-xs uppercase font-medium text-[var(--brand)]" style={{ letterSpacing: '0.8px' }}>
+            {listing.brand}
+          </p>
+          {isCollab && (
+            <span className="px-2 py-1 bg-[var(--brand)] text-white text-xs font-medium rounded-full">
+              COLLAB
+            </span>
+          )}
+        </div>
+
+        {/* Title */}
+        <h1 className="text-xl font-bold text-[var(--charcoal)] mb-3 line-clamp-2">
+          {listing.title}
+        </h1>
+
+        {/* Price */}
+        <p className="text-2xl font-bold text-[var(--brand)] mb-4">
+          {formatPrice(listing.price)}
+        </p>
+
+        {/* Spec Tags */}
+        <div className="flex flex-wrap gap-2 mb-5">
+          <span className="px-3 py-1 bg-[var(--sand-light)] text-xs font-medium rounded-full text-[var(--charcoal)]">
+            {listing.category}
+          </span>
+          <span className="px-3 py-1 bg-[var(--sand-light)] text-xs font-medium rounded-full text-[var(--charcoal)]">
+            {listing.condition}
+          </span>
+          <span className="px-3 py-1 bg-[var(--sand-light)] text-xs font-medium rounded-full text-[var(--charcoal)]">
+            Size: {listing.size}
+          </span>
+        </div>
+
+        {/* Seller Card */}
+        <div className="border border-[var(--border)] rounded-lg p-4 mb-5">
+          <div className="flex items-start gap-3 mb-4">
+            <div className="w-12 h-12 bg-[var(--brand)] text-white rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0">
+              {listing.seller.name.charAt(0)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-[var(--charcoal)]">{listing.seller.name}</p>
+              <div className="flex items-center gap-2 mt-1">
+                <div className="flex gap-0.5">
+                  {Array(Math.floor(listing.seller.rating))
+                    .fill(0)
+                    .map((_, i) => (
+                      <span key={i} className="text-xs">
+                        ⛳
+                      </span>
+                    ))}
+                </div>
+                <span className="text-xs text-[var(--slate)]">
+                  {listing.seller.rating}
+                </span>
+              </div>
+              <p className="text-xs text-[var(--slate)] mt-1">
+                {listing.seller.sales} sales • {tierLabels[listing.seller.tier]}
+              </p>
+            </div>
+          </div>
+          <button className="w-full py-2 border border-[var(--border)] text-sm font-medium rounded-lg text-[var(--charcoal)] transition-all active:scale-95 hover:bg-[var(--sand-light)]">
+            Message Seller
+          </button>
+        </div>
+
+        {/* Trust Signals - 2x2 Grid */}
+        <div className="grid grid-cols-2 gap-3 mb-6">
+          <div className="border border-[var(--border)] rounded-lg p-3 text-center">
+            <Shield size={20} className="text-[var(--brand)] mx-auto mb-1" />
+            <p className="text-xs font-medium text-[var(--charcoal)]">Buyer Protection</p>
+          </div>
+          <div className="border border-[var(--border)] rounded-lg p-3 text-center">
+            <Truck size={20} className="text-[var(--brand)] mx-auto mb-1" />
+            <p className="text-xs font-medium text-[var(--charcoal)]">Tracked Shipping</p>
+          </div>
+          <div className="border border-[var(--border)] rounded-lg p-3 text-center">
+            <Check size={20} className="text-[var(--brand)] mx-auto mb-1" />
+            <p className="text-xs font-medium text-[var(--charcoal)]">Verified Seller</p>
+          </div>
+          <div className="border border-[var(--border)] rounded-lg p-3 text-center">
+            <MessageCircle size={20} className="text-[var(--brand)] mx-auto mb-1" />
+            <p className="text-xs font-medium text-[var(--charcoal)]">Ask Questions</p>
+          </div>
+        </div>
+
+        {/* Description */}
+        <div className="mb-6">
+          <h3 className="font-medium text-[var(--charcoal)] mb-2">Description</h3>
+          <p className="text-sm text-[var(--slate)] leading-relaxed">
+            {listing.description}
+          </p>
+        </div>
+
+        {/* Details */}
+        <div className="space-y-3 mb-6">
+          <div className="flex justify-between py-2 border-b border-[var(--border)]">
+            <span className="text-xs text-[var(--slate)]">Brand</span>
+            <span className="text-xs font-medium text-[var(--charcoal)]">
+              {listing.brand}
+            </span>
+          </div>
+          <div className="flex justify-between py-2 border-b border-[var(--border)]">
+            <span className="text-xs text-[var(--slate)]">Color</span>
+            <span className="text-xs font-medium text-[var(--charcoal)]">
+              {listing.color}
+            </span>
+          </div>
+          <div className="flex justify-between py-2">
+            <span className="text-xs text-[var(--slate)]">Gender</span>
+            <span className="text-xs font-medium text-[var(--charcoal)] capitalize">
+              {listing.gender}
+            </span>
+          </div>
+        </div>
+
+        {/* Similar Items */}
+        {similarListings.length > 0 && (
+          <div>
+            <h2 className="font-medium text-[var(--charcoal)] mb-3">Similar Items</h2>
+            <div className="grid grid-cols-2 gap-3">
+              {similarListings.slice(0, 4).map((item) => (
+                <Link
+                  key={item.id}
+                  href={`/listing/${item.id}`}
+                  className="border border-[var(--border)] rounded-lg overflow-hidden active:scale-95 transition-transform"
+                >
+                  <div className="aspect-square bg-[var(--sand-light)] flex items-center justify-center">
+                    <img
+                      src={item.img}
+                      alt={item.title}
+                      className="w-full h-full object-contain p-2"
+                    />
+                  </div>
+                  <div className="p-2">
+                    <p className="text-xs text-[var(--slate)] line-clamp-1">
+                      {item.brand}
+                    </p>
+                    <p className="font-bold text-[var(--brand)] text-xs mt-1">
+                      {formatPrice(item.price)}
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Product content area */}
-      <div className="px-4 md:px-6 py-8">
-        {/* Two Column Layout */}
-        <div className="grid md:grid-cols-[45%_55%] lg:grid-cols-[40%_60%] gap-8 md:gap-12 mb-12 max-w-6xl mx-auto">
-          {/* Left Column - Images */}
-          <div>
-            {/* Main Image */}
-            <div
-              onClick={() => setLightboxOpen(true)}
-              className="aspect-square max-h-[450px] bg-gray-100 rounded-2xl overflow-hidden cursor-zoom-in mb-4 group flex items-center justify-center text-6xl"
-            >
-              <img src={listing.img} alt={listing.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-            </div>
+      {/* BuyBar - Mobile only */}
+      <div className="lg:hidden">
+        <BuyBar price={listing.price} productId={listing.id} />
+      </div>
+    </div>
 
-            {/* Thumbnail Strip */}
-            <div className="flex gap-2 overflow-x-auto pb-2">
-              {images.map((img, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setSelectedImage(idx)}
-                  className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-colors ${
-                    selectedImage === idx ? 'border-[#5f6651]' : 'border-gray-200'
-                  }`}
+    {/* DESKTOP LAYOUT - only shows at md and above */}
+    <div className="hidden md:block bg-white py-8 px-6">
+      <main className="max-w-6xl mx-auto">
+        <div className="grid grid-cols-2 gap-12">
+          {/* Left: Images */}
+          <div>
+            <div className="aspect-square bg-[var(--sand-light)] rounded-2xl overflow-hidden mb-4 flex items-center justify-center">
+              <img 
+                src={listing.img} 
+                alt={listing.title}
+                className="w-full h-full object-contain p-4"
+              />
+            </div>
+            
+            {/* Thumbnails */}
+            <div className="grid grid-cols-4 gap-3">
+              {images.map((img, i) => (
+                <div
+                  key={i}
+                  className="aspect-square bg-[var(--sand-light)] rounded-xl overflow-hidden cursor-pointer ring-2 ring-[var(--brand)]"
                 >
-                  <img src={img} alt={`${listing.title} ${idx}`} className="w-full h-full object-cover" />
-                </button>
+                  <img src={img} alt="" className="w-full h-full object-contain p-2" />
+                </div>
               ))}
             </div>
           </div>
 
-          {/* Right Column - Product Info */}
+          {/* Right: Details */}
           <div>
-            {/* Brand & Title */}
-            <p className="text-sm text-gray-500 uppercase tracking-wider font-medium">{listing.brand}</p>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mt-2">{listing.title}</h1>
-
+            {/* Brand */}
+            <p className="text-sm text-[var(--slate)] uppercase tracking-wide">{listing.brand}</p>
+            
+            {/* Title */}
+            <h1 className="text-3xl font-bold text-[var(--charcoal)] mt-2">{listing.title}</h1>
+            
             {/* Price */}
-            <p className="text-3xl md:text-4xl font-bold text-[#5f6651] mt-6">{formatPrice(listing.price)}</p>
-
-            {/* Badges */}
-            <div className="flex flex-wrap items-center gap-2 mt-4">
-              <span className="px-3 py-1.5 bg-gray-100 rounded-full text-sm font-medium">{listing.condition}</span>
-              <span className="px-3 py-1.5 bg-gray-100 rounded-full text-sm font-medium">Size: {listing.size}</span>
-              <span className="px-3 py-1.5 bg-gray-100 rounded-full text-sm font-medium capitalize">{listing.gender}</span>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="space-y-2 mt-6">
-              {/* Check if it's a Wrong Club branded product */}
-              {listing.brand.toLowerCase().includes('wrong club') ? (
-                /* Wrong Club products: Add to Cart and Buy Now side by side */
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={handleAddToCart}
-                    className="py-3 bg-[#5f6651] text-white rounded-full font-medium hover:bg-[#4a5040] transition-colors"
-                  >
-                    {addedToCart ? '✓ Added' : 'Add to Cart'}
-                  </button>
-                  <button className="py-3 border-2 border-[#5f6651] text-[#5f6651] rounded-full font-medium hover:bg-[#5f6651] hover:text-white transition-colors">
-                    Buy Now
-                  </button>
-                </div>
-              ) : (
-                /* User listings: Full width Add to Cart, conditional Make Offer */
-                <>
-                  <button
-                    onClick={handleAddToCart}
-                    className="w-full py-3 bg-[#5f6651] text-white rounded-full font-medium hover:bg-[#4a5040] transition-colors"
-                  >
-                    {addedToCart ? '✓ Added to Cart' : 'Add to Cart'}
-                  </button>
-
-                  {/* Make Offer - only shown if seller enabled it */}
-                  {listing.allowOffers && (
-                    <button className="w-full py-3 border-2 border-[#5f6651] text-[#5f6651] rounded-full font-medium hover:bg-[#5f6651] hover:text-white transition-colors">
-                      Make Offer
-                    </button>
-                  )}
-                </>
-              )}
-
-              {/* Save & Share - smaller */}
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setSaved(!saved)}
-                  className={`flex-1 py-2 border rounded-full text-sm font-medium flex items-center justify-center gap-1.5 transition-colors ${
-                    saved ? 'bg-[#5f6651] text-white border-[#5f6651]' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-                  }`}
-                >
-                  <Heart className={`w-4 h-4 ${saved ? 'fill-current' : ''}`} />
-                  Save
-                </button>
-                <button className="flex-1 py-2 border border-gray-200 rounded-full text-sm text-gray-600 font-medium hover:bg-gray-50 flex items-center justify-center gap-1.5 transition-colors">
-                  <Share2 className="w-4 h-4" />
-                  Share
-                </button>
+            <p className="text-4xl font-bold text-[var(--brand)] mt-4">{formatPrice(listing.price)}</p>
+            
+            {/* Condition & Size */}
+            <div className="flex items-center gap-4 mt-6">
+              <div className="px-4 py-2 bg-[var(--sand-light)] rounded-full">
+                <span className="text-sm font-medium">{listing.condition}</span>
+              </div>
+              <div className="px-4 py-2 bg-[var(--sand-light)] rounded-full">
+                <span className="text-sm font-medium">Size: {listing.size}</span>
               </div>
             </div>
 
-            {/* Seller Card */}
-            <div className="p-4 bg-gray-50 rounded-xl mt-6">
-              <div className="flex items-start gap-4 mb-4">
-                {/* Avatar */}
-                <Link href={`/course/${listing.seller.username}`} className="flex-shrink-0">
-                  <div className="w-14 h-14 bg-[#5f6651] text-white rounded-full flex items-center justify-center font-bold text-xl hover:bg-[#4a5040] transition-colors">
+            {/* Description */}
+            <div className="mt-8">
+              <h3 className="font-semibold text-[var(--charcoal)] mb-2">Description</h3>
+              <p className="text-[var(--slate)] leading-relaxed">{listing.description}</p>
+            </div>
+
+            {/* Seller info */}
+            <div className="mt-8 p-4 bg-[var(--sand-light)] rounded-xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-[var(--brand)] text-white rounded-full flex items-center justify-center font-bold text-lg">
                     {listing.seller.name.charAt(0)}
                   </div>
-                </Link>
-
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <Link
-                    href={`/course/${listing.seller.username}`}
-                    className="font-semibold text-gray-900 hover:text-[#5f6651] hover:underline"
-                  >
-                    {listing.seller.name}
-                  </Link>
-                  <div className="mt-1">
-                    <GolfBallRating rating={listing.seller.rating} />
-                  </div>
-                  <div className="flex items-center gap-3 mt-2 text-sm text-gray-500">
-                    <span>{listing.seller.sales} sales</span>
-                    <span>•</span>
-                    <span>
-                      {tierEmojis[listing.seller.tier]} {listing.seller.tier}
-                    </span>
+                  <div>
+                    <p className="font-semibold text-[var(--charcoal)]">{listing.seller.name}</p>
+                    <p className="text-sm text-[var(--slate)]">{listing.seller.sales} sales</p>
                   </div>
                 </div>
+                <GolfBallRating rating={listing.seller.rating} />
               </div>
+            </div>
 
-              {/* Seller Actions */}
-              <div className="flex gap-2">
-                <button className="flex-1 py-2.5 bg-white border border-gray-200 rounded-full text-sm font-medium text-center hover:bg-gray-100 transition-colors flex items-center justify-center gap-2">
-                  <MessageCircle className="w-4 h-4" />
-                  Message
-                </button>
+            {/* Actions */}
+            <div className="mt-8 space-y-3">
+              <button
+                className="w-full py-4 rounded-full font-semibold text-lg bg-[var(--brand)] text-white hover:bg-[#4a5040] transition-all"
+              >
+                Add to Cart
+              </button>
+              
+              <button className="w-full py-4 rounded-full font-semibold text-lg border-2 border-[var(--brand)] text-[var(--brand)] hover:bg-[var(--brand)] hover:text-white transition-all">
+                Make an Offer
+              </button>
+            </div>
+
+            {/* Shipping info */}
+            <div className="mt-8 pt-6 border-t border-[var(--border)]">
+              <div className="flex items-center gap-3 text-[var(--slate)]">
+                <span>📦</span>
+                <span>Free shipping on orders over $100</span>
+              </div>
+              <div className="flex items-center gap-3 text-[var(--slate)] mt-2">
+                <span>🛡️</span>
+                <span>Buyer protection on all purchases</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* More from seller - desktop */}
+        {similarListings.length > 0 && (
+          <div className="mt-16">
+            <h2 className="text-2xl font-bold text-[var(--charcoal)] mb-6">More from this seller</h2>
+            <div className="grid grid-cols-5 gap-4">
+              {similarListings.slice(0, 5).map((item) => (
                 <Link
-                  href={`/course/${listing.seller.username}`}
-                  className="flex-1 py-2.5 bg-white border border-gray-200 rounded-full text-sm font-medium text-center hover:bg-gray-100 transition-colors"
+                  key={item.id}
+                  href={`/listing/${item.id}`}
+                  className="group block bg-white rounded-2xl overflow-hidden border border-[var(--border)] hover:shadow-lg transition-all"
                 >
-                  View Shop
+                  <div className="aspect-square bg-[var(--sand-light)] flex items-center justify-center">
+                    <img src={item.img} alt={item.title} className="w-full h-full object-contain p-2" />
+                  </div>
+                  <div className="p-3">
+                    <p className="text-xs text-[var(--slate)] uppercase">{item.brand}</p>
+                    <h3 className="font-medium text-[var(--charcoal)] text-sm mt-1 line-clamp-1">{item.title}</h3>
+                    <p className="text-base font-bold text-[var(--brand)] mt-1">{formatPrice(item.price)}</p>
+                  </div>
                 </Link>
-              </div>
-            </div>
-
-            {/* Shipping Estimate */}
-            <div className="mt-6 pt-6 border-t border-gray-100">
-              <h3 className="font-semibold text-gray-900 mb-3">Shipping</h3>
-              
-              {/* Delivery address input */}
-              <div className="mb-4">
-                <label className="text-sm text-gray-500 mb-1 block">Deliver to</label>
-                <div className="flex gap-2">
-                  <input 
-                    type="text"
-                    placeholder="Enter ZIP code"
-                    value={zipCode}
-                    onChange={(e) => setZipCode(e.target.value)}
-                    className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#5f6651] focus:border-transparent"
-                  />
-                  <button 
-                    onClick={calculateShipping}
-                    className="px-4 py-2 bg-gray-100 rounded-lg text-sm font-medium hover:bg-gray-200"
-                  >
-                    Calculate
-                  </button>
-                </div>
-              </div>
-              
-              {/* Shipping options - show after ZIP entered */}
-              {shippingCalculated && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <span>📦</span>
-                      <div>
-                        <p className="text-sm font-medium">Standard</p>
-                        <p className="text-xs text-gray-500">5-7 business days</p>
-                      </div>
-                    </div>
-                    <p className="font-medium">{listing.price >= 10000 ? 'FREE' : '$5.95'}</p>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <span>🚀</span>
-                      <div>
-                        <p className="text-sm font-medium">Express</p>
-                        <p className="text-xs text-gray-500">2-3 business days</p>
-                      </div>
-                    </div>
-                    <p className="font-medium">$12.95</p>
-                  </div>
-                  
-                  {listing.price >= 10000 && (
-                    <p className="text-sm text-[#5f6651] font-medium">
-                      🎉 This item qualifies for free standard shipping!
-                    </p>
-                  )}
-                </div>
-              )}
-              
-              {/* Before ZIP entered */}
-              {!shippingCalculated && (
-                <p className="text-sm text-gray-500">
-                  Enter your ZIP code to see shipping options
-                </p>
-              )}
+              ))}
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* You May Also Like - moved up */}
-      {isMounted && similarListings.length > 0 && (
-        <div className="max-w-6xl mx-auto py-8 border-t border-gray-100 px-4 md:px-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">You May Also Like</h2>
-
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            {similarListings.slice(0, 5).map((item) => (
-              <Link key={item.id} href={`/listing/${item.id}`} className="group">
-                <div className="aspect-square bg-gray-100 rounded-xl overflow-hidden mb-3 flex items-center justify-center">
-                  <img src={item.img} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                </div>
-                <p className="text-xs text-gray-500 uppercase font-medium">{item.brand}</p>
-                <p className="text-sm font-medium text-gray-900 truncate mt-1">{item.title}</p>
-                <p className="font-bold text-[#5f6651] mt-1">{formatPrice(item.price)}</p>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* More From Seller */}
-      {isMounted && sellerListings.length > 0 && (
-        <div className="max-w-6xl mx-auto py-8 border-t border-gray-100 px-4 md:px-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-gray-900">More from @{listing.seller.username}</h2>
-            <Link href={`/course/${listing.seller.username}`} className="text-[#5f6651] font-medium hover:underline">
-              View All →
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            {sellerListings.slice(0, 5).map((item) => (
-              <Link key={item.id} href={`/listing/${item.id}`} className="group">
-                <div className="aspect-square bg-gray-100 rounded-xl overflow-hidden mb-3 flex items-center justify-center">
-                  <img src={item.img} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                </div>
-                <p className="font-bold text-[#5f6651]">{formatPrice(item.price)}</p>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Description & Details - moved down */}
-      <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-8 py-8 border-t border-gray-100 px-4 md:px-6">
-        {/* Description */}
-        <div>
-          <h3 className="font-semibold text-gray-900 mb-4">Description</h3>
-          <p className="text-gray-600 leading-relaxed whitespace-pre-wrap text-sm">{listing.description}</p>
-        </div>
-
-        {/* Details Table */}
-        <div>
-          <h3 className="font-semibold text-gray-900 mb-4">Details</h3>
-          <dl className="space-y-0">
-            <div className="flex justify-between py-3 border-b border-gray-100">
-              <dt className="text-gray-500 text-sm">Brand</dt>
-              <dd className="font-medium text-gray-900">{listing.brand}</dd>
-            </div>
-            <div className="flex justify-between py-3 border-b border-gray-100">
-              <dt className="text-gray-500 text-sm">Category</dt>
-              <dd className="font-medium text-gray-900 capitalize">{listing.category}</dd>
-            </div>
-            <div className="flex justify-between py-3 border-b border-gray-100">
-              <dt className="text-gray-500 text-sm">Size</dt>
-              <dd className="font-medium text-gray-900">{listing.size}</dd>
-            </div>
-            <div className="flex justify-between py-3 border-b border-gray-100">
-              <dt className="text-gray-500 text-sm">Condition</dt>
-              <dd className="font-medium text-gray-900">{listing.condition}</dd>
-            </div>
-            <div className="flex justify-between py-3 border-b border-gray-100">
-              <dt className="text-gray-500 text-sm">Color</dt>
-              <dd className="font-medium text-gray-900">{listing.color}</dd>
-            </div>
-            {listing.material && (
-              <div className="flex justify-between py-3">
-                <dt className="text-gray-500 text-sm">Material</dt>
-                <dd className="font-medium text-gray-900">{listing.material}</dd>
-              </div>
-            )}
-          </dl>
-        </div>
-      </div>
-
-      {/* Buyer Protection */}
-      <div className="max-w-6xl mx-auto py-8 border-t border-gray-100 px-4 md:px-6">
-        <h3 className="font-semibold text-gray-900 mb-4">Buyer Protection</h3>
-        <div className="space-y-3">
-          <div className="flex items-start gap-3">
-            <span className="text-[#5f6651] font-bold">✓</span>
-            <p className="text-gray-700 text-sm">Money-back guarantee</p>
-          </div>
-          <div className="flex items-start gap-3">
-            <span className="text-[#5f6651] font-bold">✓</span>
-            <p className="text-gray-700 text-sm">Secure payments via Stripe</p>
-          </div>
-          <div className="flex items-start gap-3">
-            <span className="text-[#5f6651] font-bold">✓</span>
-            <p className="text-gray-700 text-sm">Item as described or your money back</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Mobile Sticky Footer */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 md:hidden z-40">
-        <div className="flex items-center gap-3">
-          <div className="flex-shrink-0">
-            <p className="text-2xl font-bold text-[#5f6651]">{formatPrice(listing.price)}</p>
-          </div>
-          <button
-            onClick={handleAddToCart}
-            className="flex-1 py-3 bg-[#5f6651] text-white rounded-full font-semibold hover:bg-[#4a5040] transition-colors"
-          >
-            {addedToCart ? '✓ Added' : 'Add to Cart'}
-          </button>
-        </div>
-      </div>
-
-      {/* Lightbox Modal */}
-      {lightboxOpen && (
-        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" onClick={() => setLightboxOpen(false)}>
-          {/* Close button */}
-          <button
-            className="absolute top-4 right-4 text-white p-2 hover:bg-white/10 rounded-full transition-colors z-10"
-            onClick={() => setLightboxOpen(false)}
-          >
-            <X className="w-8 h-8" />
-          </button>
-
-          {/* Left arrow */}
-          <button
-            className="absolute left-4 text-white p-2 hover:bg-white/10 rounded-full transition-colors z-10"
-            onClick={(e) => {
-              e.stopPropagation()
-              setSelectedImage((prev) => (prev > 0 ? prev - 1 : images.length - 1))
-            }}
-          >
-            <ChevronLeft className="w-8 h-8" />
-          </button>
-
-          {/* Main image */}
-          <img
-            src={images[selectedImage]}
-            alt={listing.title}
-            className="max-h-[90vh] max-w-[90vw] object-contain"
-            onClick={(e) => e.stopPropagation()}
-          />
-
-          {/* Right arrow */}
-          <button
-            className="absolute right-4 text-white p-2 hover:bg-white/10 rounded-full transition-colors z-10"
-            onClick={(e) => {
-              e.stopPropagation()
-              setSelectedImage((prev) => (prev < images.length - 1 ? prev + 1 : 0))
-            }}
-          >
-            <ChevronRight className="w-8 h-8" />
-          </button>
-
-          {/* Image counter */}
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white text-sm bg-black/40 px-3 py-1 rounded-full">
-            {selectedImage + 1} / {images.length}
-          </div>
-        </div>
-      )}
+        )}
+      </main>
     </div>
+  </div>
   )
 }

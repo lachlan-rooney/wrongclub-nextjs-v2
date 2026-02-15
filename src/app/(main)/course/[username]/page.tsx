@@ -28,6 +28,7 @@ interface SellerCourse {
   avatar_url: string | null
   banner_url: string | null
   banner_position: number
+  header_image: string
   terrain: 'links' | 'parkland' | 'desert' | 'mountain' | 'night_golf'
   time_of_day: 'morning' | 'midday' | 'golden' | 'dusk'
   accent_color: string
@@ -45,9 +46,133 @@ const mockSeller: SellerCourse = {
   avatar_url: null,
   banner_url: '/images/lachlans-links-header.png',
   banner_position: 50,
+  header_image: '/images/sellers/sarahl-header.png',
   terrain: 'links',
   time_of_day: 'midday',
   accent_color: '#5f6651',
+}
+
+// Mock sellers database
+const mockSellers: Record<string, SellerCourse> = {
+  lachlan: {
+    username: 'lachlan',
+    name: 'Lachlan',
+    course_name: "Lachlan's Links",
+    tagline: 'Premium golf gear, priced right',
+    tier: 'eagle',
+    rating: 4.9,
+    total_sales: 47,
+    followers: 156,
+    avatar_url: null,
+    banner_url: '/images/lachlans-links-header.png',
+    banner_position: 50,
+    header_image: '/images/sarahl-header.png',
+    terrain: 'links',
+    time_of_day: 'midday',
+    accent_color: '#5f6651',
+  },
+  tomb: {
+    username: 'tomb',
+    name: 'Tom B.',
+    course_name: 'Tom\'s Golf Emporium',
+    tagline: 'Headwear obsessed. 200+ hats and counting.',
+    tier: 'hole_in_one',
+    rating: 4.9,
+    total_sales: 892,
+    followers: 4120,
+    avatar_url: null,
+    banner_url: '/images/walkers-poster.png',
+    banner_position: 50,
+    header_image: '/images/tomb-header.png',
+    terrain: 'parkland',
+    time_of_day: 'golden',
+    accent_color: '#5f6651',
+  },
+  mikep: {
+    username: 'mikep',
+    name: 'Mike P.',
+    course_name: 'Mike\'s Vintage Golf',
+    tagline: 'Vintage golf gear collector. Always hunting for rare finds.',
+    tier: 'eagle',
+    rating: 4.9,
+    total_sales: 127,
+    followers: 892,
+    avatar_url: null,
+    banner_url: '/images/walkers-rain-jacket.png',
+    banner_position: 50,
+    header_image: '/images/mikep-header.png',
+    terrain: 'links',
+    time_of_day: 'dusk',
+    accent_color: '#5f6651',
+  },
+  sarahgolf: {
+    username: 'sarahgolf',
+    name: 'Sarah L.',
+    course_name: 'Sarah\'s Tour Gear',
+    tagline: 'Tour player gear specialist. If it was worn on tour, I probably have it.',
+    tier: 'albatross',
+    rating: 5.0,
+    total_sales: 412,
+    followers: 2340,
+    avatar_url: null,
+    banner_url: '/images/walkers-varsity-jacket.png',
+    banner_position: 50,
+    header_image: '/images/sarahl-header.png',
+    terrain: 'parkland',
+    time_of_day: 'golden',
+    accent_color: '#5f6651',
+  },
+  chrisg: {
+    username: 'chrisg',
+    name: 'Chris G.',
+    course_name: 'Chris\'s Desert Golf',
+    tagline: 'Desert golf enthusiast. Specializing in hot weather gear.',
+    tier: 'birdie',
+    rating: 4.7,
+    total_sales: 43,
+    followers: 234,
+    avatar_url: null,
+    banner_url: '/images/desert.png',
+    banner_position: 50,
+    header_image: '/images/chrisg-header.png',
+    terrain: 'desert',
+    time_of_day: 'midday',
+    accent_color: '#C4A77D',
+  },
+  emmak: {
+    username: 'emmak',
+    name: 'Emma K.',
+    course_name: 'Emma\'s Golf Fashion',
+    tagline: 'Women\'s golf fashion curator. Making the course stylish.',
+    tier: 'eagle',
+    rating: 4.8,
+    total_sales: 189,
+    followers: 1560,
+    avatar_url: null,
+    banner_url: '/images/vinamilk-gilet-2.png',
+    banner_position: 50,
+    header_image: '/images/emmak-header.png',
+    terrain: 'parkland',
+    time_of_day: 'golden',
+    accent_color: '#5f6651',
+  },
+  jaker: {
+    username: 'jaker',
+    name: 'Jake R.',
+    course_name: 'Jake\'s Budget Finds',
+    tagline: 'Budget finds and steals. Quality gear without the price tag.',
+    tier: 'birdie',
+    rating: 4.5,
+    total_sales: 18,
+    followers: 89,
+    avatar_url: null,
+    banner_url: '/images/walkers-trousers.png',
+    banner_position: 50,
+    header_image: '/images/jaker-header.png',
+    terrain: 'links',
+    time_of_day: 'midday',
+    accent_color: '#5f6651',
+  },
 }
 
 const mockListings: Listing[] = [
@@ -152,47 +277,43 @@ export default function PublicCoursePage({ params }: { params: { username: strin
   const [isMounted, setIsMounted] = useState(false)
   const [isFollowing, setIsFollowing] = useState(false)
 
+  // Get seller data based on username, fallback to default
+  const seller = mockSellers[params.username] || mockSeller
+
   useEffect(() => {
     setIsMounted(true)
   }, [])
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Banner */}
-      {mockSeller.banner_url && (
-        <div className="w-full h-48 bg-gray-200 relative overflow-hidden">
-          <Image
-            src={mockSeller.banner_url}
-            alt={mockSeller.course_name}
-            fill
-            className="object-cover"
-            style={{
-              objectPosition: `center ${mockSeller.banner_position}%`,
-            }}
-          />
-        </div>
-      )}
+      {/* Banner/Header image */}
+      <div className="w-full h-48 md:h-64 bg-gray-200 relative overflow-hidden">
+        <img
+          src={seller.header_image}
+          alt={seller.course_name}
+          className="w-full h-full object-cover"
+        />
+      </div>
 
-      <main className="pb-16">
+      <main className="pb-16 pt-8">
         {/* Seller Info Section */}
         <div className="px-6 max-w-4xl mx-auto mb-12">
           <div className="flex items-start gap-6 mb-6">
             {/* Avatar */}
             <div className="w-20 h-20 rounded-lg bg-[#5f6651] text-white flex items-center justify-center font-bold text-3xl flex-shrink-0">
-              {mockSeller.name.charAt(0)}
+              {seller.name.charAt(0)}
             </div>
 
             {/* Info */}
             <div className="flex-1">
-              <h1 className="text-3xl font-bold text-gray-900">{mockSeller.course_name}</h1>
-              <p className="text-gray-600 text-lg mt-1">{mockSeller.tagline}</p>
+              <h1 className="text-3xl font-bold text-gray-900">{seller.course_name}</h1>
+              <p className="text-gray-600 text-lg mt-1">{seller.tagline}</p>
 
               {/* Stats */}
               <div className="flex items-center gap-4 mt-4 text-sm text-gray-600">
-                <span>{tierNames[mockSeller.tier]}</span>
-                <span>⭐ {mockSeller.rating}</span>
-                <span>{mockSeller.total_sales} sales</span>
-                <span>{mockSeller.followers} followers</span>
+                <span>{tierNames[seller.tier]}</span>
+                <span>⭐ {seller.rating}</span>
+                <span>{seller.followers} followers</span>
               </div>
 
               {/* Actions */}
@@ -256,8 +377,8 @@ export default function PublicCoursePage({ params }: { params: { username: strin
             <div
               className="rounded-2xl h-96 relative overflow-hidden mb-8"
               style={{
-                backgroundImage: `url(${terrainStyles[mockSeller.terrain].background})`,
-                backgroundColor: mockSeller.accent_color,
+                backgroundImage: `url(${terrainStyles[seller.terrain].background})`,
+                backgroundColor: seller.accent_color,
                 backgroundSize: 'contain',
                 backgroundPosition: 'center',
                 backgroundRepeat: 'no-repeat',
@@ -265,7 +386,7 @@ export default function PublicCoursePage({ params }: { params: { username: strin
             >
               {/* Time of Day Overlay */}
               <div
-                className={`absolute inset-0 ${timeOverlays[mockSeller.time_of_day]} pointer-events-none`}
+                className={`absolute inset-0 ${timeOverlays[seller.time_of_day]} pointer-events-none`}
               />
 
               {/* Products */}

@@ -3,6 +3,8 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { useState, useEffect } from 'react'
+import { usePathname } from 'next/navigation'
+import { useAuth } from '@/contexts/AuthContext'
 import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
@@ -37,7 +39,9 @@ const navItems = [
 ]
 
 export function Header() {
-  const { user, setUser, cart, hydrated, setHydrated } = useStore()
+  const pathname = usePathname()
+  const { user, profile, signOut, isLoading } = useAuth()
+  const { cart } = useStore()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
@@ -47,14 +51,17 @@ export function Header() {
   const [lastScrollY, setLastScrollY] = useState(0)
 
   const handleLogOut = async () => {
-    setUser(null)
+    await signOut()
     window.location.href = '/'
   }
 
-  // Initialize hydration flag only
+  // Close all menus when route changes
   useEffect(() => {
-    setHydrated(true)
-  }, [setHydrated])
+    setMobileMenuOpen(false)
+    setOpenDropdown(null)
+    setUserMenuOpen(false)
+    setSearchOpen(false)
+  }, [pathname])
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -190,23 +197,23 @@ export function Header() {
             </Link>
 
             {/* User */}
-            {hydrated && (
+            {!isLoading && (
               user && user.id ? (
                 <div className="relative" data-user-menu>
                   <button
                     onClick={() => setUserMenuOpen(!userMenuOpen)}
                     className="w-11 h-11 bg-brand-green text-white rounded-full flex items-center justify-center font-semibold hover:bg-[#4a5040] transition-colors"
                   >
-                    {user.name?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || 'U'}
+                    {profile?.display_name?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || 'U'}
                   </button>
                   
                   {/* User Dropdown Menu */}
                   {userMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-52 bg-white border border-gray-200 rounded-xl shadow-lg z-[110] overflow-hidden">
+                    <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-gray-200 rounded-xl shadow-xl z-[9999] overflow-hidden">
                       {/* User Info Header */}
                       <div className="bg-gradient-to-br from-brand-green to-[#4a5040] text-white px-4 py-2.5">
-                        <p className="font-bold text-sm">{user.name || 'User'}</p>
-                        <p className="text-xs text-green-100 mt-0.5">@{user.username || user.email?.split('@')[0] || 'user'} • Eagle Tier</p>
+                        <p className="font-bold text-sm">{profile?.display_name || 'User'}</p>
+                        <p className="text-xs text-green-100 mt-0.5">@{profile?.username || user.email?.split('@')[0] || 'user'} • Eagle Tier</p>
                         
                         {/* User Stats */}
                         <div className="mt-2 grid grid-cols-3 gap-3 pt-3">
@@ -251,7 +258,7 @@ export function Header() {
                         </Link>
                         <div className="border-t border-gray-100"></div>
                         <Link
-                          href={`/profile/${user.username || user.id}`}
+                          href={`/profile/${profile?.username || user.id}`}
                           className="block px-4 py-2.5 text-sm text-gray-900 hover:bg-gray-50 transition-colors flex items-center gap-3"
                           onClick={() => setUserMenuOpen(false)}
                         >
@@ -259,7 +266,7 @@ export function Header() {
                           <span className="font-medium">Wardrobe</span>
                         </Link>
                         <Link
-                          href={`/profile/${user.username || user.id}`}
+                          href={`/profile/${profile?.username || user.id}`}
                           className="block px-4 py-2.5 text-sm text-gray-900 hover:bg-gray-50 transition-colors flex items-center gap-3"
                           onClick={() => setUserMenuOpen(false)}
                         >
@@ -284,7 +291,10 @@ export function Header() {
                           <span className="font-medium">Settings</span>
                         </Link>
                         <button
-                          onClick={handleLogOut}
+                          onClick={() => {
+                            handleLogOut()
+                            setUserMenuOpen(false)
+                          }}
                           className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center gap-3"
                         >
                           <span className="text-lg">🚪</span>
@@ -297,7 +307,7 @@ export function Header() {
               ) : (
                 <Link
                   href="/login"
-                  className="px-4 py-2 text-brand-green rounded-lg transition-colors"
+                  className="px-4 py-2 text-brand-green rounded-lg transition-colors hover:bg-gray-100"
                 >
                   Sign In
                 </Link>
@@ -337,7 +347,10 @@ export function Header() {
                             key={subitem.href}
                             href={subitem.href}
                             className="block px-4 py-3 text-gray-900 hover:bg-gray-100 text-sm"
-                            onClick={() => setMobileMenuOpen(false)}
+                            onClick={() => {
+                              setMobileMenuOpen(false)
+                              setOpenDropdown(null)
+                            }}
                           >
                             <div className="flex items-start gap-2">
                               <span className="text-base">{subitem.icon}</span>
@@ -355,7 +368,10 @@ export function Header() {
                   <Link
                     href={item.href}
                     className="block px-4 py-3 text-brand-green hover:bg-gray-100 rounded-lg"
-                    onClick={() => setMobileMenuOpen(false)}
+                    onClick={() => {
+                      setMobileMenuOpen(false)
+                      setOpenDropdown(null)
+                    }}
                   >
                     {item.label}
                   </Link>

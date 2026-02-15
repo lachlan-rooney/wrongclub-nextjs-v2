@@ -1,12 +1,50 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:wght@400;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --brand: #5F6651;
+    --brand-light: #7A8A6B;
+    --brand-dark: #4A5040;
+    --sand: #A89A7D;
+    --sand-light: #F5F0E8;
+    --rust: #9A6B4C;
+    --charcoal: #2D2D2D;
+    --slate: #64748B;
+    --off-white: #FAF9F6;
+    --border: #E8E5DF;
+  }
+
   body {
     @apply font-sans antialiased;
+  }
+
+  @keyframes fadeUpStagger {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes pop {
+    0% {
+      transform: scale(0);
+      opacity: 0;
+    }
+    50% {
+      transform: scale(1.1);
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
   }
 }
 
@@ -29,5 +67,14 @@
   
   .card {
     @apply bg-white rounded-2xl shadow-sm border border-gray-100;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
 }
