@@ -86,9 +86,9 @@ export default function Header() {
                       {profile?.display_name || profile?.username}
                     </p>
                     <p className="text-sm text-gray-500">@{profile?.username}</p>
-                    {profile?.tier && (
+                    {profile?.tier_seller && (
                       <p className="text-xs text-[#5f6651] font-medium capitalize">
-                        {profile.tier} • {profile.handicap_points} points
+                        {profile.tier_seller} • {profile.handicap_seller?.toFixed(1)} handicap
                       </p>
                     )}
                   </div>
