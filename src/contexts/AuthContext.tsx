@@ -208,9 +208,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             username: username.toLowerCase(),
             display_name: displayName || username,
           },
-          emailRedirectTo: `http://localhost:${typeof window !== 'undefined' ? window.location.port : '3001'}/auth/confirm`,
+          emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/confirm`,
         },
-      })
+      }))
 
       // Log what we're sending for debugging
       console.log('Signup metadata being sent:', {
