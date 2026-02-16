@@ -103,11 +103,10 @@ function ToggleSwitch({ enabled, onChange }: { enabled: boolean; onChange: (valu
 }
 
 export default function SettingsPage() {
-  const { profile, isLoading, user, addresses, fetchAddresses } = useAuth()
+  const { profile, isLoading, user, addresses, fetchAddresses, notification_preferences, updateNotificationPreferences } = useAuth()
   const [settings, setSettings] = useState(mockSettings)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
-  const [notifications, setNotifications] = useState(mockSettings.notifications)
   const [privacy, setPrivacy] = useState(mockSettings.privacy)
   const [sizes, setSizes] = useState(mockSettings.sizes)
   const [seller, setSeller] = useState(mockSettings.seller)
@@ -463,96 +462,102 @@ export default function SettingsPage() {
         <section id="notifications" className="bg-white border border-gray-200 rounded-xl p-8 mb-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">Notifications</h2>
 
-          {/* Push Notifications */}
-          <div className="mb-8 pb-8 border-b border-gray-200">
-            <p className="text-sm font-semibold text-gray-700 mb-4">Push Notifications</p>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <p className="text-sm text-gray-700">New messages</p>
-                <ToggleSwitch
-                  enabled={notifications.push_messages}
-                  onChange={(value) => setNotifications({ ...notifications, push_messages: value })}
-                />
+          {notification_preferences ? (
+            <>
+              {/* Push Notifications */}
+              <div className="mb-8 pb-8 border-b border-gray-200">
+                <p className="text-sm font-semibold text-gray-700 mb-4">Push Notifications</p>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm text-gray-700">New messages</p>
+                    <ToggleSwitch
+                      enabled={notification_preferences.push_messages}
+                      onChange={(value) => updateNotificationPreferences({ push_messages: value })}
+                    />
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm text-gray-700">Item sold</p>
+                    <ToggleSwitch
+                      enabled={notification_preferences.push_sold}
+                      onChange={(value) => updateNotificationPreferences({ push_sold: value })}
+                    />
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm text-gray-700">Price drops on saved items</p>
+                    <ToggleSwitch
+                      enabled={notification_preferences.push_price_drops}
+                      onChange={(value) => updateNotificationPreferences({ push_price_drops: value })}
+                    />
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm text-gray-700">New items from sellers you follow</p>
+                    <ToggleSwitch
+                      enabled={notification_preferences.push_new_items}
+                      onChange={(value) => updateNotificationPreferences({ push_new_items: value })}
+                    />
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm text-gray-700">Order updates (shipped, delivered)</p>
+                    <ToggleSwitch
+                      enabled={notification_preferences.push_order_updates}
+                      onChange={(value) => updateNotificationPreferences({ push_order_updates: value })}
+                    />
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm text-gray-700">Drop alerts</p>
+                    <ToggleSwitch
+                      enabled={notification_preferences.push_drops}
+                      onChange={(value) => updateNotificationPreferences({ push_drops: value })}
+                    />
+                  </div>
+                </div>
               </div>
-              <div className="flex justify-between items-center">
-                <p className="text-sm text-gray-700">Item sold</p>
-                <ToggleSwitch
-                  enabled={notifications.push_sold}
-                  onChange={(value) => setNotifications({ ...notifications, push_sold: value })}
-                />
-              </div>
-              <div className="flex justify-between items-center">
-                <p className="text-sm text-gray-700">Price drops on saved items</p>
-                <ToggleSwitch
-                  enabled={notifications.push_price_drops}
-                  onChange={(value) => setNotifications({ ...notifications, push_price_drops: value })}
-                />
-              </div>
-              <div className="flex justify-between items-center">
-                <p className="text-sm text-gray-700">New items from sellers you follow</p>
-                <ToggleSwitch
-                  enabled={notifications.push_new_items}
-                  onChange={(value) => setNotifications({ ...notifications, push_new_items: value })}
-                />
-              </div>
-              <div className="flex justify-between items-center">
-                <p className="text-sm text-gray-700">Order updates (shipped, delivered)</p>
-                <ToggleSwitch
-                  enabled={notifications.push_order_updates}
-                  onChange={(value) => setNotifications({ ...notifications, push_order_updates: value })}
-                />
-              </div>
-              <div className="flex justify-between items-center">
-                <p className="text-sm text-gray-700">Drop alerts</p>
-                <ToggleSwitch
-                  enabled={notifications.push_drops}
-                  onChange={(value) => setNotifications({ ...notifications, push_drops: value })}
-                />
-              </div>
-            </div>
-          </div>
 
-          {/* Email Notifications */}
-          <div>
-            <p className="text-sm font-semibold text-gray-700 mb-4">Email Notifications</p>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <p className="text-sm text-gray-700">Order confirmations</p>
-                <ToggleSwitch
-                  enabled={notifications.email_orders}
-                  onChange={(value) => setNotifications({ ...notifications, email_orders: value })}
-                />
+              {/* Email Notifications */}
+              <div>
+                <p className="text-sm font-semibold text-gray-700 mb-4">Email Notifications</p>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm text-gray-700">Order confirmations</p>
+                    <ToggleSwitch
+                      enabled={notification_preferences.email_orders}
+                      onChange={(value) => updateNotificationPreferences({ email_orders: value })}
+                    />
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm text-gray-700">Shipping updates</p>
+                    <ToggleSwitch
+                      enabled={notification_preferences.email_shipping}
+                      onChange={(value) => updateNotificationPreferences({ email_shipping: value })}
+                    />
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm text-gray-700">Marketing & promotions</p>
+                    <ToggleSwitch
+                      enabled={notification_preferences.email_marketing}
+                      onChange={(value) => updateNotificationPreferences({ email_marketing: value })}
+                    />
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm text-gray-700">Weekly digest</p>
+                    <ToggleSwitch
+                      enabled={notification_preferences.email_digest}
+                      onChange={(value) => updateNotificationPreferences({ email_digest: value })}
+                    />
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm text-gray-700">Seller tips & insights</p>
+                    <ToggleSwitch
+                      enabled={notification_preferences.email_seller_tips}
+                      onChange={(value) => updateNotificationPreferences({ email_seller_tips: value })}
+                    />
+                  </div>
+                </div>
               </div>
-              <div className="flex justify-between items-center">
-                <p className="text-sm text-gray-700">Shipping updates</p>
-                <ToggleSwitch
-                  enabled={notifications.email_shipping}
-                  onChange={(value) => setNotifications({ ...notifications, email_shipping: value })}
-                />
-              </div>
-              <div className="flex justify-between items-center">
-                <p className="text-sm text-gray-700">Marketing & promotions</p>
-                <ToggleSwitch
-                  enabled={notifications.email_marketing}
-                  onChange={(value) => setNotifications({ ...notifications, email_marketing: value })}
-                />
-              </div>
-              <div className="flex justify-between items-center">
-                <p className="text-sm text-gray-700">Weekly digest</p>
-                <ToggleSwitch
-                  enabled={notifications.email_digest}
-                  onChange={(value) => setNotifications({ ...notifications, email_digest: value })}
-                />
-              </div>
-              <div className="flex justify-between items-center">
-                <p className="text-sm text-gray-700">Seller tips & insights</p>
-                <ToggleSwitch
-                  enabled={notifications.email_seller_tips}
-                  onChange={(value) => setNotifications({ ...notifications, email_seller_tips: value })}
-                />
-              </div>
-            </div>
-          </div>
+            </>
+          ) : (
+            <p className="text-gray-500">Loading notification preferences...</p>
+          )}
         </section>
 
         {/* SECTION 5: Privacy */}

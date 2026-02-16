@@ -46,11 +46,29 @@ export interface Address {
   updated_at: string
 }
 
+export interface NotificationPreferences {
+  id: string
+  push_messages: boolean
+  push_sold: boolean
+  push_price_drops: boolean
+  push_new_items: boolean
+  push_order_updates: boolean
+  push_drops: boolean
+  email_orders: boolean
+  email_shipping: boolean
+  email_marketing: boolean
+  email_digest: boolean
+  email_seller_tips: boolean
+  created_at: string
+  updated_at: string
+}
+
 interface AuthContextType {
   user: User | null
   profile: Profile | null
   session: Session | null
   addresses: Address[]
+  notification_preferences: NotificationPreferences | null
   isLoading: boolean
   isAuthenticated: boolean
   signUp: (email: string, password: string, username: string, displayName?: string) => Promise<{ error: Error | null }>
@@ -65,6 +83,8 @@ interface AuthContextType {
   createAddress: (address: Omit<Address, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => Promise<{ error: Error | null; data?: Address }>
   updateAddress: (id: string, updates: Partial<Address>) => Promise<{ error: Error | null }>
   deleteAddress: (id: string) => Promise<{ error: Error | null }>
+  fetchNotificationPreferences: () => Promise<void>
+  updateNotificationPreferences: (updates: Partial<NotificationPreferences>) => Promise<{ error: Error | null }>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -74,6 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [addresses, setAddresses] = useState<Address[]>([])
+  const [notification_preferences, setNotificationPreferences] = useState<NotificationPreferences | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
   const supabase = createClient()
@@ -198,18 +219,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (mounted) {
               setProfile(profileData)
             }
-            // Also fetch addresses when user logs in
+            // Also fetch addresses and notification preferences when user logs in
             await fetchAddresses()
+            await fetchNotificationPreferences()
           }, 500)
         } else {
           setProfile(null)
           setAddresses([])
+          setNotificationPreferences(null)
         }
 
         // Handle specific auth events
         if (event === 'SIGNED_OUT') {
           setProfile(null)
           setAddresses([])
+          setNotificationPreferences(null)
           router.push('/')
         } else if (event === 'PASSWORD_RECOVERY') {
           router.push('/reset-password')
@@ -517,11 +541,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  // Fetch notification preferences
+  const fetchNotificationPreferences = useCallback(async () => {
+    try {
+      if (!user) {
+        setNotificationPreferences(null)
+        return
+      }
+
+      const { data, error } = await supabase.rpc('get_my_notification_preferences')
+
+      if (error) {
+        console.error('Error fetching notification preferences:', error.message)
+        setNotificationPreferences(null)
+        return
+      }
+
+      if (data && data.length > 0) {
+        setNotificationPreferences(data[0] as NotificationPreferences)
+      }
+    } catch (err) {
+      console.error('Notification preferences fetch error:', err)
+      setNotificationPreferences(null)
+    }
+  }, [user, supabase])
+
+  // Update notification preferences
+  const updateNotificationPreferences = async (
+    updates: Partial<NotificationPreferences>
+  ): Promise<{ error: Error | null }> => {
+    try {
+      if (!user) {
+        return { error: new Error('Not authenticated') }
+      }
+
+      const { error } = await supabase
+        .from('notification_preferences')
+        .update(updates)
+        .eq('user_id', user.id)
+
+      if (error) {
+        return { error }
+      }
+
+      await fetchNotificationPreferences()
+      return { error: null }
+    } catch (err) {
+      return { error: err as Error }
+    }
+  }
+
   const value: AuthContextType = {
     user,
     profile,
     session,
     addresses,
+    notification_preferences,
     isLoading,
     isAuthenticated: !!user,
     signUp,
@@ -536,6 +611,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     createAddress,
     updateAddress,
     deleteAddress,
+    fetchNotificationPreferences,
+    updateNotificationPreferences,
   }
 
   return (
