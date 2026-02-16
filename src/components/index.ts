@@ -17,3 +17,7 @@ export { OfferSheet } from './OfferSheet'
 export { BuyBar } from './BuyBar'
 export { ImageCarousel } from './ImageCarousel'
 export { BottomNav } from './BottomNav'
+
+// Caddie AI Components
+export { default as CaddieChat } from './CaddieChat'
+export { default as CaddieButton } from './CaddieButton'

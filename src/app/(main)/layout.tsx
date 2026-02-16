@@ -1,5 +1,6 @@
 import { Header } from '@/components/layout/Header'
 import { BottomNav } from '@/components/BottomNav'
+import { CaddieButton } from '@/components'
 
 export default function MainLayout({
   children,
@@ -11,6 +12,7 @@ export default function MainLayout({
       <Header />
       <main className="pt-20 pb-24 md:pb-0">{children}</main>
       <BottomNav />
+      <CaddieButton />
     </div>
   )
 }
