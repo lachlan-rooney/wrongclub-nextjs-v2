@@ -55,21 +55,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const supabase = createClient()
 
-  // Fetch user profile from database
+  // Fetch user profile from database using secure function
   const fetchProfile = useCallback(async (userId: string) => {
     try {
+      // Use RPC to bypass RLS issues - calls get_my_profile() function
       const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single()
+        .rpc('get_my_profile')
 
       if (error) {
-        console.error('Error fetching profile:', error)
-        return null
+        console.error('Error fetching profile via RPC:', error)
+        // Fallback to direct query
+        const { data: directData, error: directError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .single()
+        
+        if (directError) {
+          console.error('Error fetching profile directly:', directError)
+          return null
+        }
+        return directData as Profile
       }
 
-      return data as Profile
+      return data?.[0] as Profile
     } catch (err) {
       console.error('Error fetching profile:', err)
       return null
@@ -196,6 +205,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           },
           emailRedirectTo: `http://localhost:${typeof window !== 'undefined' ? window.location.port : '3001'}/auth/confirm`,
         },
+      })
+
+      // Log what we're sending for debugging
+      console.log('Signup metadata being sent:', {
+        username: username.toLowerCase(),
+        display_name: displayName || username,
       })
 
       if (error) {
