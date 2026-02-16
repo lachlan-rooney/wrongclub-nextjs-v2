@@ -82,8 +82,8 @@ export default function BrowsePage() {
   const [hoveredListing, setHoveredListing] = useState<typeof mockListings[0] | null>(null)
   const [activeGender, setActiveGender] = useState<string | null>(null)
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
-  const [mySizesOnly, setMySizesOnly] = useState(false)
-  const [expandSizeRange, setExpandSizeRange] = useState(false)
+  // mySizesOnly states: false = off, 'exact' = exact sizes only, 'expanded' = exact + adjacent
+  const [mySizesOnly, setMySizesOnly] = useState<false | 'exact' | 'expanded'>(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [isMounted, setIsMounted] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
@@ -155,7 +155,7 @@ export default function BrowsePage() {
       
       if (userSize) {
         // Get sizes to match (exact + adjacent if expanded)
-        const sizesToMatch = expandSizeRange 
+        const sizesToMatch = mySizesOnly === 'expanded'
           ? getAdjacentSizes(userSize, listing.category)
           : [userSize]
         
@@ -199,7 +199,6 @@ export default function BrowsePage() {
     setActiveGender(null)
     setActiveCategory(null)
     setMySizesOnly(false)
-    setExpandSizeRange(false)
   }
 
   const handleMouseDown = (e: React.MouseEvent, listing: typeof mockListings[0]) => {
@@ -287,34 +286,25 @@ export default function BrowsePage() {
                 All
               </button>
 
-              {/* My Sizes Only Button */}
+              {/* My Sizes Only Button - cycles through off → exact → expanded */}
               {profile && (profile.size_tops || profile.size_bottoms_waist || profile.size_footwear || profile.size_headwear) && (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setMySizesOnly(!mySizesOnly)}
-                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                      mySizesOnly
-                        ? 'bg-green-500 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                    title="Filter by your saved sizes from Settings"
-                  >
-                    👕 My Sizes Only
-                  </button>
-                  {mySizesOnly && (
-                    <button
-                      onClick={() => setExpandSizeRange(!expandSizeRange)}
-                      className={`px-3 py-2 rounded-full text-xs font-medium transition-all ${
-                        expandSizeRange
-                          ? 'bg-amber-500 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                      title="Include sizes just outside your range (±1 size)"
-                    >
-                      {expandSizeRange ? '📏 ±1 Size' : '±1 Size'}
-                    </button>
-                  )}
-                </div>
+                <button
+                  onClick={() => {
+                    if (!mySizesOnly) setMySizesOnly('exact')
+                    else if (mySizesOnly === 'exact') setMySizesOnly('expanded')
+                    else setMySizesOnly(false)
+                  }}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                    !mySizesOnly
+                      ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      : mySizesOnly === 'exact'
+                      ? 'bg-green-500 text-white'
+                      : 'bg-green-600 text-white'
+                  }`}
+                  title={!mySizesOnly ? "Filter by your saved sizes" : mySizesOnly === 'exact' ? "Click again to include adjacent sizes" : "Click to turn off or click again for exact sizes only"}
+                >
+                  👕 My Sizes {mySizesOnly === 'expanded' && '±1'}
+                </button>
               )}
               <div 
                 className="relative z-50"
@@ -458,29 +448,23 @@ export default function BrowsePage() {
                 <>
                   <div className="w-px bg-gray-300" />
                   <button
-                    onClick={() => setMySizesOnly(!mySizesOnly)}
+                    onClick={() => {
+                      if (!mySizesOnly) setMySizesOnly('exact')
+                      else if (mySizesOnly === 'exact') setMySizesOnly('expanded')
+                      else setMySizesOnly(false)
+                    }}
                     className={`px-3 py-2 rounded-full text-xs font-medium transition-all flex-shrink-0 active:scale-95 ${
-                      mySizesOnly
+                      !mySizesOnly
+                        ? 'bg-white text-gray-700 border-[1.5px] border-[var(--border)]'
+                        : mySizesOnly === 'exact'
                         ? 'bg-green-500 text-white'
-                        : 'bg-white text-gray-700 border-[1.5px] border-[var(--border)]'
+                        : 'bg-green-600 text-white'
                     }`}
                     style={{ fontFamily: 'DM Sans', fontSize: '13px', fontWeight: 500 }}
+                    title={!mySizesOnly ? "Filter by your saved sizes" : mySizesOnly === 'exact' ? "Click again to include ±1 sizes" : "Click to turn off"}
                   >
-                    👕 My Sizes
+                    👕 {mySizesOnly === 'expanded' ? 'My Sizes ±1' : 'My Sizes'}
                   </button>
-                  {mySizesOnly && (
-                    <button
-                      onClick={() => setExpandSizeRange(!expandSizeRange)}
-                      className={`px-3 py-2 rounded-full text-xs font-medium transition-all flex-shrink-0 active:scale-95 ${
-                        expandSizeRange
-                          ? 'bg-amber-500 text-white'
-                          : 'bg-white text-gray-700 border-[1.5px] border-[var(--border)]'
-                      }`}
-                      style={{ fontFamily: 'DM Sans', fontSize: '13px', fontWeight: 500 }}
-                    >
-                      {expandSizeRange ? '📏 ±1' : '±1'}
-                    </button>
-                  )}
                 </>
               )}
             </div>
