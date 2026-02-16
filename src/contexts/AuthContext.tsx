@@ -166,14 +166,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     displayName?: string
   ): Promise<{ error: Error | null }> => {
     try {
-      // First check if username is taken
-      const { data: existingUser } = await supabase
-        .from('profiles')
-        .select('username')
-        .eq('username', username.toLowerCase())
-        .single()
+      // First check if username is taken using public function
+      // (avoids RLS issues with direct table access during unauthenticated signup)
+      const { data: available, error: checkError } = await supabase
+        .rpc('check_username_available', { p_username: username.toLowerCase() })
 
-      if (existingUser) {
+      if (checkError || !available) {
         return { error: new Error('Username is already taken') }
       }
 
