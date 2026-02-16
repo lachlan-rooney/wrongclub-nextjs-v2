@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
@@ -103,7 +103,7 @@ function ToggleSwitch({ enabled, onChange }: { enabled: boolean; onChange: (valu
 }
 
 export default function SettingsPage() {
-  const { profile, isLoading } = useAuth()
+  const { profile, isLoading, user } = useAuth()
   const [settings, setSettings] = useState(mockSettings)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
@@ -111,6 +111,29 @@ export default function SettingsPage() {
   const [privacy, setPrivacy] = useState(mockSettings.privacy)
   const [sizes, setSizes] = useState(mockSettings.sizes)
   const [seller, setSeller] = useState(mockSettings.seller)
+
+  // Account section state - initialized from profile
+  const [accountData, setAccountData] = useState({
+    display_name: profile?.display_name || '',
+    username: profile?.username || '',
+    email: profile?.email || '',
+    phone: mockSettings.account.phone,
+    two_factor_enabled: mockSettings.account.two_factor_enabled,
+    email_verified: profile?.email ? true : false,
+  })
+
+  // Update account data when profile loads
+  useEffect(() => {
+    if (profile) {
+      setAccountData((prev) => ({
+        ...prev,
+        display_name: profile.display_name || '',
+        username: profile.username || '',
+        email: profile.email || '',
+        email_verified: profile.email ? true : false,
+      }))
+    }
+  }, [profile])
 
   // Show loading state
   if (isLoading) {
@@ -182,7 +205,7 @@ export default function SettingsPage() {
             <p className="text-sm font-semibold text-gray-700 mb-4">Profile Photo</p>
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 bg-[#5f6651] text-white rounded-full flex items-center justify-center text-2xl font-bold">
-                {(profile?.display_name || profile?.username || 'U')[0].toUpperCase()}
+                {(accountData.display_name || accountData.username || 'U')[0].toUpperCase()}
               </div>
               <button className="px-4 py-2 bg-gray-100 text-gray-900 rounded-lg font-medium hover:bg-gray-200">
                 Change Photo
@@ -195,7 +218,8 @@ export default function SettingsPage() {
             <label className="block text-sm font-semibold text-gray-700 mb-2">Display Name</label>
             <input
               type="text"
-              defaultValue={profile?.display_name || ''}
+              value={accountData.display_name}
+              onChange={(e) => setAccountData({ ...accountData, display_name: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5f6651]"
             />
           </div>
@@ -205,7 +229,7 @@ export default function SettingsPage() {
             <label className="block text-sm font-semibold text-gray-700 mb-2">Username</label>
             <input
               type="text"
-              defaultValue={`@${profile?.username || ''}`}
+              value={`@${accountData.username}`}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5f6651] bg-gray-50"
               disabled
             />
@@ -217,11 +241,16 @@ export default function SettingsPage() {
             <div className="flex gap-2">
               <input
                 type="email"
-                defaultValue={profile?.email || ''}
+                value={accountData.email}
+                onChange={(e) => setAccountData({ ...accountData, email: e.target.value })}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5f6651]"
               />
-              <button className="px-4 py-2 bg-green-100 text-green-700 rounded-lg font-medium text-sm">
-                ✓ Verified
+              <button className={`px-4 py-2 rounded-lg font-medium text-sm ${
+                accountData.email_verified 
+                  ? 'bg-green-100 text-green-700' 
+                  : 'bg-yellow-100 text-yellow-700'
+              }`}>
+                {accountData.email_verified ? '✓ Verified' : '⏳ Pending'}
               </button>
             </div>
           </div>
@@ -231,7 +260,8 @@ export default function SettingsPage() {
             <label className="block text-sm font-semibold text-gray-700 mb-2">Phone</label>
             <input
               type="tel"
-              defaultValue={settings.account.phone}
+              value={accountData.phone}
+              onChange={(e) => setAccountData({ ...accountData, phone: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5f6651]"
             />
           </div>
@@ -256,11 +286,11 @@ export default function SettingsPage() {
               <p className="text-xs text-gray-600">Add an extra layer of security</p>
             </div>
             <ToggleSwitch
-              enabled={settings.account.two_factor_enabled}
+              enabled={accountData.two_factor_enabled}
               onChange={(value) =>
-                setSettings({
-                  ...settings,
-                  account: { ...settings.account, two_factor_enabled: value },
+                setAccountData({
+                  ...accountData,
+                  two_factor_enabled: value,
                 })
               }
             />
