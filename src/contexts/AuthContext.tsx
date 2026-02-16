@@ -32,7 +32,6 @@ interface Profile {
   size_bottoms_length: string | null
   size_footwear: string | null
   size_headwear: string | null
-  size_gloves: string | null
   gender_preference: 'mens' | 'womens' | 'all' | null
   
   created_at: string

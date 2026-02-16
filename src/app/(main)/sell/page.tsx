@@ -1,137 +1,271 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import Link from 'next/link'
+import Image from 'next/image'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/contexts/AuthContext'
+import { createClient } from '@/lib/supabase-client'
 import { FitScaleSlider } from '@/components'
+import { Upload, X, ChevronLeft, ChevronRight, AlertCircle, Loader } from 'lucide-react'
 
-interface FormData {
-  title: string
-  brand: string
-  category: string
-  gender: string
-  condition: string
-  size: string
-  description: string
-  price: string
+interface UploadedImage {
+  file: File
+  preview: string
 }
 
+const CATEGORIES = [
+  { value: 'tops', label: 'Tops (Polos, Shirts)' },
+  { value: 'bottoms', label: 'Bottoms (Pants, Shorts)' },
+  { value: 'outerwear', label: 'Outerwear (Jackets, Vests)' },
+  { value: 'footwear', label: 'Footwear (Shoes, Spikes)' },
+  { value: 'headwear', label: 'Headwear (Caps, Hats)' },
+  { value: 'accessories', label: 'Accessories (Belts, Scarves)' },
+  { value: 'bags', label: 'Bags (Stand, Cart, Travel)' },
+]
+
+const GENDERS = [
+  { value: 'mens', label: "Men's" },
+  { value: 'womens', label: "Women's" },
+  { value: 'unisex', label: 'Unisex' },
+]
+
+const CONDITIONS = [
+  { value: 'new_with_tags', label: 'New with Tags' },
+  { value: 'new_without_tags', label: 'New without Tags' },
+  { value: 'excellent', label: 'Excellent' },
+  { value: 'good', label: 'Good' },
+  { value: 'fair', label: 'Fair' },
+]
+
+const SIZE_OPTIONS: Record<string, string[]> = {
+  tops: ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'],
+  outerwear: ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'],
+  bottoms: ['28', '29', '30', '31', '32', '33', '34', '36', '38', '40', '42', '44'],
+  footwear: ['7', '7.5', '8', '8.5', '9', '9.5', '10', '10.5', '11', '11.5', '12', '13', '14'],
+  headwear: ['S/M', 'M/L', 'L/XL', 'One Size', 'Adjustable'],
+  accessories: ['S', 'M', 'L', 'XL', 'One Size'],
+  bags: ['One Size'],
+}
+
+const COMMON_BRANDS = [
+  'Titleist',
+  'Callaway',
+  'TaylorMade',
+  'FootJoy',
+  'Nike',
+  'Adidas',
+  'Puma',
+  'Under Armour',
+  'Travis Mathew',
+  'Peter Millar',
+  'Malbon Golf',
+  'Good Good',
+  'Walkers',
+  'YETI',
+]
+
 export default function SellPage() {
+  const router = useRouter()
+  const { profile, isAuthenticated } = useAuth()
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [formData, setFormData] = useState<FormData>({
+
+  const [images, setImages] = useState<UploadedImage[]>([])
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0)
+  const [isDragging, setIsDragging] = useState(false)
+
+  const [formData, setFormData] = useState({
     title: '',
+    description: '',
     brand: '',
     category: '',
     gender: '',
-    condition: '',
     size: '',
-    description: '',
+    color: '',
+    condition: '',
     price: '',
+    shippingPrice: '',
+    freeShipping: false,
   })
 
-  const [photoAdded, setPhotoAdded] = useState(false)
-  const [submitted, setSubmitted] = useState(false)
-  const [showPricingCard, setShowPricingCard] = useState(false)
-  const [allowOffers, setAllowOffers] = useState(false)
-  const [fitScale, setFitScale] = useState(0)
   const [isOneSize, setIsOneSize] = useState(false)
+  const [fitScale, setFitScale] = useState(0)
+  const [showBrandSuggestions, setShowBrandSuggestions] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    window.scrollTo(0, 0)
-  }, [])
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-lg text-gray-600 mb-4">Please log in to list an item</p>
+          <button
+            onClick={() => router.push('/login')}
+            className="px-6 py-2 bg-[#5f6651] text-white rounded-lg"
+          >
+            Log In
+          </button>
+        </div>
+      </div>
+    )
+  }
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target
-    setFormData(prev => ({
-      ...prev,
-      [name]: value,
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    const { name, value, type } = e.target
+    if (type === 'checkbox') {
+      const checked = (e.target as HTMLInputElement).checked
+      setFormData((prev) => ({ ...prev, [name]: checked }))
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }))
+    }
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = () => {
+    setIsDragging(false)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+    const files = Array.from(e.dataTransfer.files).filter((f) => f.type.startsWith('image/'))
+    addImages(files)
+  }
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    addImages(files)
+  }
+
+  const addImages = (files: File[]) => {
+    const remaining = 8 - images.length
+    const newFiles = files.slice(0, remaining)
+
+    const newImages = newFiles.map((file) => ({
+      file,
+      preview: URL.createObjectURL(file),
     }))
+
+    setImages([...images, ...newImages])
   }
 
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    e.currentTarget.classList.add('bg-blue-50', 'border-blue-300')
+  const removeImage = (index: number) => {
+    URL.revokeObjectURL(images[index].preview)
+    setImages(images.filter((_, i) => i !== index))
+    if (selectedImageIndex >= images.length - 1) {
+      setSelectedImageIndex(Math.max(0, images.length - 2))
+    }
   }
 
-  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
-    e.currentTarget.classList.remove('bg-blue-50', 'border-blue-300')
+  const moveImage = (from: number, to: number) => {
+    const newImages = [...images]
+    const [moved] = newImages.splice(from, 1)
+    newImages.splice(to, 0, moved)
+    setImages(newImages)
   }
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    e.currentTarget.classList.remove('bg-blue-50', 'border-blue-300')
-    setPhotoAdded(true)
-  }
+  const filteredBrands = COMMON_BRANDS.filter((b) =>
+    b.toLowerCase().includes(formData.brand.toLowerCase())
+  )
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    setSubmitted(true)
-    setTimeout(() => {
-      setSubmitted(false)
-      setFormData({
-        title: '',
-        brand: '',
-        category: '',
-        gender: '',
-        condition: '',
-        size: '',
-        description: '',
-        price: '',
+  const sizeOptions = SIZE_OPTIONS[formData.category as keyof typeof SIZE_OPTIONS] || []
+
+  const isFormValid =
+    images.length > 0 &&
+    formData.title.trim() &&
+    formData.brand.trim() &&
+    formData.category &&
+    formData.gender &&
+    (isOneSize || formData.size) &&
+    formData.condition &&
+    formData.price &&
+    profile
+
+  const uploadImage = async (file: File, listingId: string, order: number) => {
+    const supabase = createClient()
+
+    const fileExt = file.name.split('.').pop()
+    const fileName = `${listingId}/${order}-${Date.now()}.${fileExt}`
+
+    const { data, error } = await supabase.storage
+      .from('listings')
+      .upload(fileName, file, {
+        cacheControl: '3600',
+        upsert: false,
       })
-      setPhotoAdded(false)
-      setFitScale(0)
-      setIsOneSize(false)
-    }, 2000)
+
+    if (error) throw error
+
+    const { data: publicUrl } = supabase.storage.from('listings').getPublicUrl(fileName)
+
+    return publicUrl.publicUrl
   }
 
-  const isFormComplete = formData.title && formData.brand && formData.category && formData.gender && formData.condition && formData.price && photoAdded
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+    setError(null)
 
-  const getPriceSuggestions = (condition: string) => {
-    const priceGuide: Record<string, { quick: number; fair: number; max: number }> = {
-      new_with_tags: { quick: 55, fair: 68, max: 82 },
-      new_without_tags: { quick: 45, fair: 58, max: 70 },
-      like_new: { quick: 38, fair: 48, max: 60 },
-      good: { quick: 28, fair: 38, max: 48 },
-      fair: { quick: 18, fair: 25, max: 35 },
+    try {
+      const supabase = createClient()
+
+      // 1. Create listing record
+      const { data: listing, error: listingError } = await supabase
+        .from('listings')
+        .insert({
+          seller_id: profile!.id,
+          title: formData.title,
+          description: formData.description || null,
+          brand: formData.brand,
+          category: formData.category,
+          gender: formData.gender,
+          size: isOneSize ? 'One Size' : formData.size,
+          color: formData.color || null,
+          condition: formData.condition,
+          price_cents: Math.round(parseFloat(formData.price) * 100),
+          shipping_price_cents: formData.freeShipping ? 0 : Math.round(parseFloat(formData.shippingPrice || '0') * 100),
+          fit_scale: isOneSize ? 0 : fitScale,
+          is_one_size: isOneSize,
+          status: 'active',
+          views: 0,
+          saves: 0,
+        })
+        .select('id')
+        .single()
+
+      if (listingError) throw listingError
+
+      // 2. Upload images and create listing_images records
+      for (let i = 0; i < images.length; i++) {
+        const imageUrl = await uploadImage(images[i].file, listing.id, i)
+
+        await supabase
+          .from('listing_images')
+          .insert({
+            listing_id: listing.id,
+            url: imageUrl,
+            display_order: i,
+          })
+      }
+
+      // 3. Redirect to listing page
+      router.push(`/listing/${listing.id}`)
+    } catch (err) {
+      console.error('Error creating listing:', err)
+      setError('Failed to create listing. Please try again.')
+    } finally {
+      setIsSubmitting(false)
     }
-    return priceGuide[condition] || { quick: 40, fair: 50, max: 60 }
   }
-
-  const handlePriceSelect = (price: number) => {
-    setFormData(prev => ({
-      ...prev,
-      price: price.toString(),
-    }))
-    setShowPricingCard(false)
-  }
-
-  const canGetPriceSuggestion = formData.brand && formData.title && formData.condition
-  const priceSuggestions = canGetPriceSuggestion ? getPriceSuggestions(formData.condition) : null
-
-  const calculateEarnings = (priceString: string) => {
-    const price = parseFloat(priceString) || 0
-    if (price <= 0) return null
-    
-    const platformFee = price * 0.08
-    const processingFee = price * 0.03 + 0.30
-    const totalFees = platformFee + processingFee
-    const earnings = price - totalFees
-    
-    return {
-      price,
-      platformFee,
-      processingFee,
-      totalFees,
-      earnings,
-      earnPercentage: ((earnings / price) * 100).toFixed(1),
-    }
-  }
-
-  const earnings = calculateEarnings(formData.price)
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Main Content */}
-      <main className="px-6 pb-12">
+      <main className="px-4 sm:px-6 pb-12">
         <div className="max-w-6xl mx-auto">
           {/* Page Title */}
           <div className="mb-8 pt-8">
@@ -139,449 +273,462 @@ export default function SellPage() {
             <p className="text-gray-600">Share your golf gear with the Wrong Club community</p>
           </div>
 
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-semibold text-red-900">Error</h3>
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Form Section */}
             <div className="lg:col-span-2">
               <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Photo Upload */}
+                {/* IMAGE UPLOAD */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-900 mb-3">
-                    Photos *
+                    Photos ({images.length}/8) *
                   </label>
-                  <div
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                    onClick={() => fileInputRef.current?.click()}
-                    className="border-2 border-dashed border-gray-300 rounded-2xl p-12 text-center cursor-pointer hover:border-[#5f6651] transition-colors bg-gray-50 hover:bg-gray-100"
-                  >
-                    {photoAdded ? (
-                      <div>
-                        <div className="text-4xl mb-2">✓</div>
-                        <p className="text-gray-900 font-medium">Photo added</p>
-                        <p className="text-gray-500 text-sm mt-1">Click or drag to change</p>
+
+                  {images.length > 0 ? (
+                    <>
+                      {/* Main Image Display */}
+                      <div className="relative aspect-square bg-gray-100 rounded-2xl overflow-hidden mb-4">
+                        <Image
+                          src={images[selectedImageIndex].preview}
+                          alt="Selected"
+                          fill
+                          className="object-cover"
+                        />
+                        {images.length > 1 && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedImageIndex(Math.max(0, selectedImageIndex - 1))}
+                              className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/80 rounded-full flex items-center justify-center hover:bg-white"
+                              disabled={selectedImageIndex === 0}
+                            >
+                              <ChevronLeft className="w-5 h-5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setSelectedImageIndex(Math.min(images.length - 1, selectedImageIndex + 1))
+                              }
+                              className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/80 rounded-full flex items-center justify-center hover:bg-white"
+                              disabled={selectedImageIndex === images.length - 1}
+                            >
+                              <ChevronRight className="w-5 h-5" />
+                            </button>
+                          </>
+                        )}
+                        <div className="absolute top-2 left-2 px-2 py-1 bg-black/70 text-white text-xs rounded">
+                          Cover Photo
+                        </div>
                       </div>
-                    ) : (
-                      <div>
-                        <div className="text-4xl mb-2">📸</div>
-                        <p className="text-gray-900 font-medium">Drag photos here or click</p>
-                        <p className="text-gray-500 text-sm mt-1">PNG, JPG up to 10MB each</p>
+
+                      {/* Thumbnails */}
+                      <div className="flex gap-2 overflow-x-auto pb-2">
+                        {images.map((image, index) => (
+                          <div
+                            key={index}
+                            className={`relative w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden border-2 cursor-pointer group ${
+                              index === selectedImageIndex ? 'border-[#5f6651]' : 'border-transparent'
+                            }`}
+                          >
+                            <Image
+                              src={image.preview}
+                              alt={`Upload ${index + 1}`}
+                              fill
+                              className="object-cover"
+                              onClick={() => setSelectedImageIndex(index)}
+                            />
+
+                            {/* Remove Button */}
+                            <button
+                              type="button"
+                              onClick={() => removeImage(index)}
+                              className="absolute top-0 right-0 w-5 h-5 bg-red-500 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+
+                            {/* Reorder Buttons */}
+                            <div className="absolute bottom-1 left-1/2 -translate-x-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              {index > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => moveImage(index, index - 1)}
+                                  className="w-5 h-5 bg-white rounded text-xs shadow"
+                                >
+                                  ←
+                                </button>
+                              )}
+                              {index < images.length - 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => moveImage(index, index + 1)}
+                                  className="w-5 h-5 bg-white rounded text-xs shadow"
+                                >
+                                  →
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+
+                        {/* Add More Button */}
+                        {images.length < 8 && (
+                          <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="w-16 h-16 flex-shrink-0 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center hover:border-[#5f6651] hover:bg-[#5f6651]/5 transition-colors"
+                          >
+                            <Upload className="w-5 h-5 text-gray-400" />
+                          </button>
+                        )}
                       </div>
-                    )}
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files.length > 0) {
-                          setPhotoAdded(true)
-                        }
-                      }}
-                    />
-                  </div>
+                    </>
+                  ) : (
+                    <div
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                      onClick={() => fileInputRef.current?.click()}
+                      className={`border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-colors ${
+                        isDragging
+                          ? 'border-[#5f6651] bg-[#5f6651]/5'
+                          : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    >
+                      <div className="text-4xl mb-2">📸</div>
+                      <p className="text-gray-900 font-medium">Drag photos here or click</p>
+                      <p className="text-gray-500 text-sm mt-1">Up to 8 photos. First photo is the cover.</p>
+                    </div>
+                  )}
+
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
                 </div>
 
-                {/* Title */}
+                {/* TITLE */}
                 <div>
-                  <label htmlFor="title" className="block text-sm font-semibold text-gray-900 mb-2">
-                    Title *
-                  </label>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">Title *</label>
                   <input
                     type="text"
-                    id="title"
                     name="title"
                     value={formData.title}
                     onChange={handleInputChange}
                     placeholder="e.g. Nike Golf Polo - White"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5f6651] focus:border-transparent"
+                    maxLength={100}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5f6651]"
                     required
                   />
+                  <p className="text-xs text-gray-500 mt-1">{formData.title.length}/100</p>
                 </div>
 
-                {/* Brand */}
+                {/* DESCRIPTION */}
                 <div>
-                  <label htmlFor="brand" className="block text-sm font-semibold text-gray-900 mb-2">
-                    Brand *
-                  </label>
-                  <input
-                    type="text"
-                    id="brand"
-                    name="brand"
-                    value={formData.brand}
-                    onChange={handleInputChange}
-                    placeholder="e.g. Malbon Golf, FootJoy"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5f6651] focus:border-transparent"
-                    required
-                  />
-                </div>
-
-                {/* Category, Gender, Condition Row */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Category */}
-                  <div>
-                    <label htmlFor="category" className="block text-sm font-semibold text-gray-900 mb-2">
-                      Category *
-                    </label>
-                    <select
-                      id="category"
-                      name="category"
-                      value={formData.category}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5f6651] focus:border-transparent"
-                      required
-                    >
-                      <option value="">Select a category</option>
-                      <option value="tops">Tops</option>
-                      <option value="bottoms">Bottoms</option>
-                      <option value="footwear">Footwear</option>
-                      <option value="headwear">Headwear</option>
-                      <option value="accessories">Accessories</option>
-                      <option value="bags">Bags</option>
-                    </select>
-                  </div>
-
-                  {/* Gender */}
-                  <div>
-                    <label htmlFor="gender" className="block text-sm font-semibold text-gray-900 mb-2">
-                      Gender *
-                    </label>
-                    <select
-                      id="gender"
-                      name="gender"
-                      value={formData.gender}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5f6651] focus:border-transparent"
-                      required
-                    >
-                      <option value="">Select gender</option>
-                      <option value="mens">Mens</option>
-                      <option value="womens">Womens</option>
-                      <option value="juniors">Juniors</option>
-                      <option value="unisex">Unisex</option>
-                    </select>
-                  </div>
-
-                  {/* Condition */}
-                  <div>
-                    <label htmlFor="condition" className="block text-sm font-semibold text-gray-900 mb-2">
-                      Condition *
-                    </label>
-                    <select
-                      id="condition"
-                      name="condition"
-                      value={formData.condition}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5f6651] focus:border-transparent"
-                      required
-                    >
-                      <option value="">Select condition</option>
-                      <option value="new_with_tags">New with Tags</option>
-                      <option value="new_without_tags">New without Tags</option>
-                      <option value="like_new">Like New</option>
-                      <option value="good">Good</option>
-                      <option value="fair">Fair</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Size */}
-                <div>
-                  <label htmlFor="size" className="block text-sm font-semibold text-gray-900 mb-2">
-                    Size
-                  </label>
-                  <input
-                    type="text"
-                    id="size"
-                    name="size"
-                    value={formData.size}
-                    onChange={handleInputChange}
-                    placeholder="e.g. M, L, 10, One Size"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5f6651] focus:border-transparent"
-                  />
-                </div>
-
-                {/* One Size Checkbox */}
-                <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
-                  <input
-                    type="checkbox"
-                    id="isOneSize"
-                    checked={isOneSize}
-                    onChange={(e) => setIsOneSize(e.target.checked)}
-                    className="w-5 h-5 text-[#5f6651] rounded focus:ring-2 focus:ring-[#5f6651]"
-                  />
-                  <label htmlFor="isOneSize" className="text-sm font-semibold text-gray-900 cursor-pointer">
-                    This is a One Size / Adjustable item
-                  </label>
-                </div>
-
-                {/* Fit Scale */}
-                {!isOneSize && (
-                  <div className="p-6 bg-blue-50 rounded-xl border border-blue-200">
-                    <FitScaleSlider
-                      value={fitScale}
-                      onChange={setFitScale}
-                      label="Fit Scale"
-                      description="How does this item fit compared to the size label? Helps buyers find the perfect fit."
-                    />
-                  </div>
-                )}
-
-                {/* Description */}
-                <div>
-                  <label htmlFor="description" className="block text-sm font-semibold text-gray-900 mb-2">
-                    Description
-                  </label>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">Description</label>
                   <textarea
-                    id="description"
                     name="description"
                     value={formData.description}
                     onChange={handleInputChange}
-                    placeholder="Tell buyers more about this item. Include any details about condition, flaws, or special features."
+                    placeholder="Tell buyers about this item. Include any flaws, features, or care instructions."
+                    maxLength={2000}
                     rows={6}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5f6651] focus:border-transparent resize-none"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5f6651] resize-none"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">{formData.description.length}/2000</p>
+                </div>
+
+                {/* BRAND */}
+                <div className="relative">
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">Brand *</label>
+                  <input
+                    type="text"
+                    name="brand"
+                    value={formData.brand}
+                    onChange={handleInputChange}
+                    onFocus={() => setShowBrandSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowBrandSuggestions(false), 200)}
+                    placeholder="e.g. Nike, Malbon Golf"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5f6651]"
+                    required
+                  />
+
+                  {/* Brand Suggestions */}
+                  {showBrandSuggestions && filteredBrands.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-10">
+                      {filteredBrands.map((brand) => (
+                        <button
+                          key={brand}
+                          type="button"
+                          onClick={() => {
+                            setFormData((prev) => ({ ...prev, brand }))
+                            setShowBrandSuggestions(false)
+                          }}
+                          className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm"
+                        >
+                          {brand}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* CATEGORY, GENDER, CONDITION */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">Category *</label>
+                    <select
+                      name="category"
+                      value={formData.category}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5f6651]"
+                      required
+                    >
+                      <option value="">Select...</option>
+                      {CATEGORIES.map((cat) => (
+                        <option key={cat.value} value={cat.value}>
+                          {cat.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">Gender *</label>
+                    <select
+                      name="gender"
+                      value={formData.gender}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5f6651]"
+                      required
+                    >
+                      <option value="">Select...</option>
+                      {GENDERS.map((g) => (
+                        <option key={g.value} value={g.value}>
+                          {g.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">Condition *</label>
+                    <select
+                      name="condition"
+                      value={formData.condition}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5f6651]"
+                      required
+                    >
+                      <option value="">Select...</option>
+                      {CONDITIONS.map((c) => (
+                        <option key={c.value} value={c.value}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* SIZE & ONE SIZE */}
+                <div>
+                  <div className="flex items-center gap-3 mb-3">
+                    <input
+                      type="checkbox"
+                      id="isOneSize"
+                      name="isOneSize"
+                      checked={isOneSize}
+                      onChange={(e) => setIsOneSize(e.target.checked)}
+                      className="w-5 h-5 rounded"
+                    />
+                    <label htmlFor="isOneSize" className="text-sm font-semibold text-gray-900">
+                      One Size / Adjustable
+                    </label>
+                  </div>
+
+                  {!isOneSize && (
+                    <select
+                      name="size"
+                      value={formData.size}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5f6651]"
+                      required={!isOneSize}
+                    >
+                      <option value="">Select size...</option>
+                      {sizeOptions.map((size) => (
+                        <option key={size} value={size}>
+                          {size}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+
+                {/* FIT SCALE */}
+                {!isOneSize && (
+                  <div className="p-6 bg-blue-50 rounded-xl border border-blue-200">
+                    <FitScaleSlider value={fitScale} onChange={setFitScale} />
+                  </div>
+                )}
+
+                {/* COLOR */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">Color</label>
+                  <input
+                    type="text"
+                    name="color"
+                    value={formData.color}
+                    onChange={handleInputChange}
+                    placeholder="e.g. White, Navy/Cream"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5f6651]"
                   />
                 </div>
 
-                {/* Price */}
-                <div>
-                  <label htmlFor="price" className="block text-sm font-semibold text-gray-900 mb-2">
-                    Price *
-                  </label>
-                  <div className="flex gap-3">
-                    <div className="relative flex-1">
-                      <span className="absolute left-4 top-3 text-gray-500 font-semibold">$</span>
+                {/* PRICING */}
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">Price *</label>
+                    <div className="flex gap-2">
+                      <span className="px-4 py-3 bg-gray-100 rounded-xl text-gray-600">$</span>
                       <input
                         type="number"
-                        id="price"
                         name="price"
                         value={formData.price}
                         onChange={handleInputChange}
                         placeholder="0.00"
                         step="0.01"
                         min="0"
-                        className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5f6651] focus:border-transparent"
+                        className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5f6651]"
                         required
                       />
                     </div>
-                    {canGetPriceSuggestion && (
-                      <button
-                        type="button"
-                        onClick={() => setShowPricingCard(!showPricingCard)}
-                        className="px-4 py-3 bg-[#5f6651]/10 text-[#5f6651] rounded-xl font-semibold hover:bg-[#5f6651]/20 transition-colors"
-                      >
-                        ✨ Smart Pricing
-                      </button>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center gap-3 mb-3">
+                      <input
+                        type="checkbox"
+                        id="freeShipping"
+                        name="freeShipping"
+                        checked={formData.freeShipping}
+                        onChange={handleInputChange}
+                        className="w-5 h-5 rounded"
+                      />
+                      <label htmlFor="freeShipping" className="text-sm font-semibold text-gray-900">
+                        Free Shipping
+                      </label>
+                    </div>
+
+                    {!formData.freeShipping && (
+                      <div className="flex gap-2">
+                        <span className="px-4 py-3 bg-gray-100 rounded-xl text-gray-600">$</span>
+                        <input
+                          type="number"
+                          name="shippingPrice"
+                          value={formData.shippingPrice}
+                          onChange={handleInputChange}
+                          placeholder="0.00"
+                          step="0.01"
+                          min="0"
+                          className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5f6651]"
+                        />
+                      </div>
                     )}
                   </div>
-
-                  {/* Smart Pricing Card */}
-                  {showPricingCard && priceSuggestions && (
-                    <div className="mt-4 p-6 bg-gradient-to-br from-[#5f6651]/5 to-[#5f6651]/10 rounded-2xl border border-[#5f6651]/20">
-                      <div className="flex items-center gap-2 mb-4">
-                        <span className="text-xl">🤖</span>
-                        <h3 className="font-bold text-gray-900">AI Price Suggestions</h3>
-                      </div>
-                      <p className="text-sm text-gray-600 mb-4">
-                        Based on condition and market data for similar items
-                      </p>
-
-                      <div className="space-y-3">
-                        {/* Quick Sale */}
-                        <button
-                          type="button"
-                          onClick={() => handlePriceSelect(priceSuggestions.quick)}
-                          className="w-full p-4 bg-white border border-gray-200 rounded-xl hover:border-[#5f6651] hover:shadow-lg transition-all text-left"
-                        >
-                          <div className="flex items-start justify-between mb-2">
-                            <div>
-                              <p className="text-sm font-semibold text-gray-900">🚀 Quick Sale</p>
-                              <p className="text-xs text-gray-500 mt-1">Sells in ~3 days</p>
-                            </div>
-                            <p className="text-2xl font-bold text-[#5f6651]">${priceSuggestions.quick}</p>
-                          </div>
-                          <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
-                            <div className="h-full bg-blue-400 w-1/3"></div>
-                          </div>
-                        </button>
-
-                        {/* Fair Price */}
-                        <button
-                          type="button"
-                          onClick={() => handlePriceSelect(priceSuggestions.fair)}
-                          className="w-full p-4 bg-white border-2 border-[#5f6651] rounded-xl shadow-md hover:shadow-lg transition-all text-left"
-                        >
-                          <div className="flex items-start justify-between mb-2">
-                            <div>
-                              <p className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-                                <span>⚖️</span> Fair Price
-                                <span className="bg-[#5f6651] text-white text-xs px-2 py-0.5 rounded-full">Recommended</span>
-                              </p>
-                              <p className="text-xs text-gray-500 mt-1">Sells in ~1 week</p>
-                            </div>
-                            <p className="text-2xl font-bold text-[#5f6651]">${priceSuggestions.fair}</p>
-                          </div>
-                          <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
-                            <div className="h-full bg-yellow-400 w-2/3"></div>
-                          </div>
-                        </button>
-
-                        {/* Max Value */}
-                        <button
-                          type="button"
-                          onClick={() => handlePriceSelect(priceSuggestions.max)}
-                          className="w-full p-4 bg-white border border-gray-200 rounded-xl hover:border-[#5f6651] hover:shadow-lg transition-all text-left"
-                        >
-                          <div className="flex items-start justify-between mb-2">
-                            <div>
-                              <p className="text-sm font-semibold text-gray-900">💰 Max Value</p>
-                              <p className="text-xs text-gray-500 mt-1">May take 2+ weeks</p>
-                            </div>
-                            <p className="text-2xl font-bold text-[#5f6651]">${priceSuggestions.max}</p>
-                          </div>
-                          <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
-                            <div className="h-full bg-green-400 w-full"></div>
-                          </div>
-                        </button>
-                      </div>
-
-                      <p className="text-xs text-gray-500 mt-4 pt-4 border-t border-gray-200">
-                        💡 Click any option to set your price. You can always adjust it later.
-                      </p>
-                    </div>
-                  )}
                 </div>
 
-                {/* Allow Offers Toggle */}
-                <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <label className="text-sm font-semibold text-gray-900">Allow Offers</label>
-                      <p className="text-xs text-gray-600 mt-1">Let buyers make offers on your item</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setAllowOffers(!allowOffers)}
-                      className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
-                        allowOffers ? 'bg-[#5f6651]' : 'bg-gray-300'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
-                          allowOffers ? 'translate-x-7' : 'translate-x-1'
-                        }`}
-                      />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Submit Button */}
+                {/* SUBMIT */}
                 <button
                   type="submit"
-                  disabled={!isFormComplete}
-                  className={`w-full px-8 py-4 rounded-full font-semibold text-lg transition-all ${
-                    submitted
-                      ? 'bg-green-500 text-white'
-                      : isFormComplete
-                      ? 'bg-[#5f6651] text-white hover:bg-[#4a5040]'
-                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  disabled={!isFormValid || isSubmitting}
+                  className={`w-full py-4 rounded-xl font-semibold text-lg transition-all ${
+                    !isFormValid || isSubmitting
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-[#5f6651] text-white hover:bg-[#4a5040]'
                   }`}
                 >
-                  {submitted ? '✓ Item Listed!' : 'List Item'}
+                  {isSubmitting ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader className="w-5 h-5 animate-spin" />
+                      Creating listing...
+                    </span>
+                  ) : (
+                    'List Item'
+                  )}
                 </button>
               </form>
             </div>
 
-            {/* Sidebar */}
-            <div>
-              {/* Tips Section */}
-              <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200 mb-6">
-                <h2 className="text-lg font-bold text-gray-900 mb-4">Listing Tips</h2>
-                <ul className="space-y-4 text-sm text-gray-600">
-                  <li className="flex gap-3">
-                    <svg className="w-5 h-5 text-[#5f6651] flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                    <span>Use clear, descriptive titles that help buyers find your item</span>
+            {/* SIDEBAR */}
+            <div className="space-y-6">
+              {/* Tips */}
+              <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                <h2 className="font-bold text-gray-900 mb-4">Tips for Success</h2>
+                <ul className="space-y-3 text-sm text-gray-600">
+                  <li className="flex gap-2">
+                    <span>✓</span>
+                    <span>Use clear, descriptive titles</span>
                   </li>
-                  <li className="flex gap-3">
-                    <svg className="w-5 h-5 text-[#5f6651] flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                    <span>Add high-quality photos from different angles</span>
+                  <li className="flex gap-2">
+                    <span>✓</span>
+                    <span>Add 3+ high-quality photos</span>
                   </li>
-                  <li className="flex gap-3">
-                    <svg className="w-5 h-5 text-[#5f6651] flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                    <span>Be honest about condition to avoid returns</span>
+                  <li className="flex gap-2">
+                    <span>✓</span>
+                    <span>Be honest about condition</span>
                   </li>
-                  <li className="flex gap-3">
-                    <svg className="w-5 h-5 text-[#5f6651] flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                    <span>Price competitively by checking similar items</span>
+                  <li className="flex gap-2">
+                    <span>✓</span>
+                    <span>Set accurate fit scale</span>
                   </li>
                 </ul>
               </div>
 
-              {/* Fee Info Section */}
-              <div className="bg-[#5f6651]/5 rounded-2xl p-6 border border-[#5f6651]/20">
-                <h2 className="text-lg font-bold text-gray-900 mb-4">Earnings Calculator</h2>
-                
-                {earnings ? (
-                  <div className="space-y-3 text-sm">
-                    <div className="flex justify-between items-center pb-3 border-b border-gray-200">
-                      <span className="text-gray-600">Item Price</span>
-                      <span className="font-semibold text-gray-900">${earnings.price.toFixed(2)}</span>
+              {/* Fees */}
+              {formData.price && (
+                <div className="bg-[#5f6651]/5 rounded-xl p-6 border border-[#5f6651]/20">
+                  <h2 className="font-bold text-gray-900 mb-4">Your Earnings</h2>
+                  <div className="space-y-2 text-sm mb-4">
+                    <div className="flex justify-between">
+                      <span>Sale Price</span>
+                      <span className="font-semibold">${parseFloat(formData.price).toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between items-center pb-3 border-b border-gray-200">
-                      <span className="text-gray-600">Platform Fee</span>
-                      <span className="font-semibold text-gray-700">8%</span>
+                    <div className="flex justify-between text-gray-600">
+                      <span>Platform Fee (10%)</span>
+                      <span>-${(parseFloat(formData.price) * 0.1).toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between items-center pb-3 border-b border-gray-200">
-                      <span className="text-gray-600">Payment Processing</span>
-                      <span className="font-semibold text-gray-700">3% + $0.30</span>
-                    </div>
-                    <div className="flex justify-between items-center pt-2 bg-[#5f6651]/10 p-3 rounded-lg">
-                      <span className="font-bold text-gray-900">You Earn</span>
-                      <div className="text-right">
-                        <p className="text-xl font-bold text-[#5f6651]">${earnings.earnings.toFixed(2)}</p>
-                        <p className="text-xs text-gray-500 mt-1">{earnings.earnPercentage}% of sale price</p>
+                    {!formData.freeShipping && formData.shippingPrice && (
+                      <div className="flex justify-between text-gray-600">
+                        <span>Shipping</span>
+                        <span>-${parseFloat(formData.shippingPrice).toFixed(2)}</span>
                       </div>
+                    )}
+                    <div className="pt-2 border-t flex justify-between font-bold">
+                      <span>You Earn</span>
+                      <span className="text-[#5f6651]">
+                        $
+                        {(
+                          parseFloat(formData.price) * 0.9 -
+                          (formData.freeShipping ? 0 : parseFloat(formData.shippingPrice || '0'))
+                        ).toFixed(2)}
+                      </span>
                     </div>
                   </div>
-                ) : (
-                  <div className="space-y-3 text-sm opacity-60">
-                    <p className="text-gray-500 text-sm mb-4 font-medium">📊 Example: $100 sale</p>
-                    <div className="flex justify-between items-center pb-3 border-b border-gray-200">
-                      <span className="text-gray-600">Item Price</span>
-                      <span className="font-semibold text-gray-900">$100.00</span>
-                    </div>
-                    <div className="flex justify-between items-center pb-3 border-b border-gray-200">
-                      <span className="text-gray-600">Platform Fee</span>
-                      <span className="font-semibold text-gray-700">8%</span>
-                    </div>
-                    <div className="flex justify-between items-center pb-3 border-b border-gray-200">
-                      <span className="text-gray-600">Payment Processing</span>
-                      <span className="font-semibold text-gray-700">3% + $0.30</span>
-                    </div>
-                    <div className="flex justify-between items-center pt-2 bg-[#5f6651]/10 p-3 rounded-lg">
-                      <span className="font-bold text-gray-900">You Earn</span>
-                      <div className="text-right">
-                        <p className="text-xl font-bold text-[#5f6651]">$88.70</p>
-                        <p className="text-xs text-gray-500 mt-1">89% of sale price</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <p className="text-xs text-blue-900 font-medium">💡 Pro Tip</p>
-                  <p className="text-xs text-blue-800 mt-1">Items priced $100+ ship free, increasing buyer confidence</p>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>

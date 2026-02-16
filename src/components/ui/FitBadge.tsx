@@ -6,7 +6,7 @@ interface FitBadgeProps {
   fitScale: number
   userSize?: string
   listingSize?: string
-  category?: 'tops' | 'bottoms_waist' | 'bottoms_length' | 'footwear' | 'headwear' | 'gloves'
+  category?: 'tops' | 'bottoms_waist' | 'bottoms_length' | 'footwear' | 'headwear'
   isOneSize?: boolean
   showRecommendation?: boolean
   size?: 'sm' | 'md' | 'lg'

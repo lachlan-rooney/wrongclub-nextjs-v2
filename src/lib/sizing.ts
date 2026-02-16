@@ -37,13 +37,6 @@ export const SIZE_OPTIONS = {
     label: 'Headwear',
     description: 'Caps, bucket hats, beanies',
     options: ['S/M', 'M/L', 'L/XL', 'One Size', 'Adjustable']
-  },
-
-  // Gloves
-  gloves: {
-    label: 'Gloves',
-    description: 'Golf gloves',
-    options: ['S', 'M', 'ML', 'L', 'XL', 'Cadet S', 'Cadet M', 'Cadet ML', 'Cadet L']
   }
 }
 
@@ -68,7 +61,7 @@ export const getFitRecommendation = (
   userSize: string,
   listingSize: string,
   fitScale: number,
-  category: 'tops' | 'bottoms_waist' | 'bottoms_length' | 'footwear' | 'headwear' | 'gloves'
+  category: 'tops' | 'bottoms_waist' | 'bottoms_length' | 'footwear' | 'headwear'
 ): string => {
   // Handle top sizes
   if (category === 'tops') {

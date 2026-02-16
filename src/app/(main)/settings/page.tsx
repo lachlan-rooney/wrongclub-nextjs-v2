@@ -76,7 +76,6 @@ const mockSettings = {
     bottoms_length: '32',
     shoes: '10',
     hats: 'one_size',
-    gloves: 'L',
   },
   seller: {
     vacation_mode: false,
@@ -124,7 +123,6 @@ export default function SettingsPage() {
     bottoms_length: profile?.size_bottoms_length || '',
     footwear: profile?.size_footwear || '',
     headwear: profile?.size_headwear || '',
-    gloves: profile?.size_gloves || '',
     gender_preference: profile?.gender_preference || 'mens',
   })
   const [sizesSaving, setSizesSaving] = useState(false)
@@ -169,7 +167,6 @@ export default function SettingsPage() {
         bottoms_length: profile.size_bottoms_length || '',
         footwear: profile.size_footwear || '',
         headwear: profile.size_headwear || '',
-        gloves: profile.size_gloves || '',
         gender_preference: profile.gender_preference || 'mens',
       })
     }
@@ -185,7 +182,6 @@ export default function SettingsPage() {
         size_bottoms_length: sizes.bottoms_length || null,
         size_footwear: sizes.footwear || null,
         size_headwear: sizes.headwear || null,
-        size_gloves: sizes.gloves || null,
         gender_preference: (sizes.gender_preference as any) || null,
       })
       if (error) {
@@ -850,23 +846,6 @@ export default function SettingsPage() {
                 <option value="medium">Medium</option>
                 <option value="large">Large</option>
                 <option value="xl">XL</option>
-              </select>
-            </div>
-
-            {/* Gloves */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Gloves</label>
-              <select
-                value={sizes.gloves}
-                onChange={(e) => setSizes({ ...sizes, gloves: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5f6651]"
-              >
-                <option value="">Select size...</option>
-                {['XS', 'S', 'M', 'M/L', 'L', 'XL'].map((size) => (
-                  <option key={size} value={size}>
-                    {size}
-                  </option>
-                ))}
               </select>
             </div>
           </div>
