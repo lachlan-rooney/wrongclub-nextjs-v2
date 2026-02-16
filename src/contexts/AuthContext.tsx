@@ -63,24 +63,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .rpc('get_my_profile')
 
       if (error) {
-        console.error('Error fetching profile via RPC:', error)
-        // Fallback to direct query
-        const { data: directData, error: directError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .single()
-        
-        if (directError) {
-          console.error('Error fetching profile directly:', directError)
-          return null
-        }
-        return directData as Profile
+        console.error('RPC get_my_profile failed:', error.message)
+      }
+      
+      if (data && data.length > 0) {
+        return data[0] as Profile
       }
 
-      return data?.[0] as Profile
+      // Fallback: direct query if RPC didn't return data
+      const { data: directData, error: directError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single()
+      
+      if (directError) {
+        console.error('❌ Direct query also failed:', directError.message)
+        return null
+      }
+
+      console.log('✅ Profile loaded via fallback direct query:', directData)
+      return directData as Profile
     } catch (err) {
-      console.error('Error fetching profile:', err)
+      console.error('❌ Profile fetch error:', err)
       return null
     }
   }, [supabase])
