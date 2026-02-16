@@ -1,6 +1,8 @@
 // UI Components
 export { Button } from './ui/Button'
 export { Input } from './ui/Input'
+export { FitScaleSlider } from './ui/FitScaleSlider'
+export { FitBadge } from './ui/FitBadge'
 
 // Layout Components
 export { Header } from './layout/Header'

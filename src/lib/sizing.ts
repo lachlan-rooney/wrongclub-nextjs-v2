@@ -118,18 +118,34 @@ export const getFitRecommendation = (
 /**
  * Get fit badge color based on fit scale
  */
-export const getFitBadgeColor = (fitScale: number): string => {
+export const getFitBadgeColor = (fitScale: number): { bgColor: string; textColor: string; borderColor: string } => {
   switch (fitScale) {
     case -2:
     case -1:
-      return 'bg-orange-100 text-orange-700'
+      return {
+        bgColor: 'bg-orange-50',
+        textColor: 'text-orange-700',
+        borderColor: 'border-orange-300'
+      }
     case 0:
-      return 'bg-green-100 text-green-700'
+      return {
+        bgColor: 'bg-green-50',
+        textColor: 'text-green-700',
+        borderColor: 'border-green-300'
+      }
     case 1:
     case 2:
-      return 'bg-blue-100 text-blue-700'
+      return {
+        bgColor: 'bg-blue-50',
+        textColor: 'text-blue-700',
+        borderColor: 'border-blue-300'
+      }
     default:
-      return 'bg-gray-100 text-gray-700'
+      return {
+        bgColor: 'bg-gray-50',
+        textColor: 'text-gray-700',
+        borderColor: 'border-gray-300'
+      }
   }
 }
 
