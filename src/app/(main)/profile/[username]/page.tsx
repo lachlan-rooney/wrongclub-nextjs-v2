@@ -65,32 +65,22 @@ export default function ProfilePage() {
     const fetchUser = async () => {
       try {
         const supabase = createClient()
-        const { data: { user: authUser }, error } = await supabase.auth.getUser()
+        
+        // Fetch profile regardless of auth state (public profile view)
+        const { data: userData, error: dbError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('username', params.username)
+          .single()
 
-        if (isMounted && authUser) {
-          // Try to fetch full user profile from database
-          try {
-            const { data: userData } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('username', params.username)
-              .single()
-
-            if (isMounted && userData) {
-              setUser(userData)
-            } else if (isMounted) {
-              // Use mock data if fetch fails
-              setUser(mockUser)
-            }
-          } catch (dbError) {
-            console.log('Could not fetch user profile from database')
-            if (isMounted) {
-              setUser(mockUser)
-            }
+        if (isMounted) {
+          if (userData) {
+            console.log('✅ Profile fetched:', userData.username, userData.display_name)
+            setUser(userData)
+          } else {
+            console.log('❌ No profile found for username:', params.username, dbError)
+            setUser(mockUser)
           }
-        } else if (isMounted) {
-          // Use mock data if no authenticated user
-          setUser(mockUser)
         }
       } catch (err) {
         console.error('Error fetching user:', err)
