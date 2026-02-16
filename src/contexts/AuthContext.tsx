@@ -210,7 +210,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           },
           emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/confirm`,
         },
-      }))
+      })
 
       // Log what we're sending for debugging
       console.log('Signup metadata being sent:', {

@@ -19,8 +19,9 @@ import {
 // Mock user data - replace with actual user fetching
 const mockUser = {
   id: '1',
-  name: 'Lachlan',
+  display_name: 'Lachlan',
   username: 'lachlan',
+  email: 'lachlan@example.com',
   avatar: null,
   bio: 'Golf gear enthusiast. Always hunting for rare finds.',
   handicap_seller: 14.2,
@@ -70,7 +71,7 @@ export default function ProfilePage() {
           // Try to fetch full user profile from database
           try {
             const { data: userData } = await supabase
-              .from('users')
+              .from('profiles')
               .select('*')
               .eq('username', params.username)
               .single()
@@ -194,13 +195,13 @@ export default function ProfilePage() {
             <div className="flex items-start gap-6">
               {/* Avatar */}
               <div className="w-24 h-24 bg-[#5f6651] rounded-full flex items-center justify-center text-white text-3xl font-bold flex-shrink-0">
-                {user.name.charAt(0)}
+                {user.display_name.charAt(0)}
               </div>
               
               {/* Info */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 flex-wrap">
-                  <h1 className="text-2xl font-bold text-gray-900">{user.name}</h1>
+                  <h1 className="text-2xl font-bold text-gray-900">{user.display_name}</h1>
                   <span 
                     className="px-3 py-1 rounded-full text-sm font-medium text-white flex-shrink-0"
                     style={{ backgroundColor: tierInfo.color }}
