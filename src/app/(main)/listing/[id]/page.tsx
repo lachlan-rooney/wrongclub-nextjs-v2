@@ -7,6 +7,8 @@ import { Heart, Share2, X, ChevronLeft, ChevronRight, MessageCircle, ArrowLeft, 
 import { useParams } from 'next/navigation'
 import { ImageCarousel } from '@/components/ImageCarousel'
 import { BuyBar } from '@/components/BuyBar'
+import { FitBadge } from '@/components'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface ListingData {
   id: string
@@ -22,6 +24,8 @@ interface ListingData {
   color: string
   material?: string
   allowOffers: boolean
+  fit_scale?: number
+  is_one_size?: boolean
   seller: {
     name: string
     username: string
@@ -51,6 +55,8 @@ const mockListings: ListingData[] = [
     category: 'tops',
     gender: 'mens',
     color: 'Navy/Cream',
+    fit_scale: 0,
+    is_one_size: false,
     allowOffers: false,
     seller: {
       name: 'Wrong Club Official',
@@ -72,6 +78,8 @@ const mockListings: ListingData[] = [
     category: 'footwear',
     gender: 'mens',
     color: 'White/Navy',
+    fit_scale: -1,
+    is_one_size: false,
     allowOffers: true,
     seller: {
       name: 'Sarah M.',
@@ -93,6 +101,8 @@ const mockListings: ListingData[] = [
     category: 'headwear',
     gender: 'mens',
     color: 'Navy',
+    fit_scale: 0,
+    is_one_size: true,
     allowOffers: true,
     seller: {
       name: 'Jack T.',
@@ -610,6 +620,18 @@ export default function ListingPage() {
             Size: {listing.size}
           </span>
         </div>
+
+        {/* Fit Information */}
+        {(listing.fit_scale !== undefined || listing.is_one_size) && (
+          <div className="mb-5 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-xs text-blue-900 font-semibold mb-2">📏 Fit Information</p>
+            <FitBadge
+              fitScale={listing.fit_scale || 0}
+              isOneSize={listing.is_one_size || false}
+              size="md"
+            />
+          </div>
+        )}
 
         {/* Seller Card */}
         <div className="border border-[var(--border)] rounded-lg p-4 mb-5">

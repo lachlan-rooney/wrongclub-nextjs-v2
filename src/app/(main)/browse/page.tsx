@@ -3,30 +3,31 @@
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useAuth } from '@/contexts/AuthContext'
 
 // Mock data matching the prototype
 const mockListings = [
-  { id: '1', img: '/images/walkers-varsity-jacket.png', brand: 'Walkers x Wrong Club', title: 'Varsity Jacket', price: 24500, position_x: 12, position_y: 22, category: 'tops', gender: 'mens', images: ['/images/walkers-varsity-jacket.png'] },
-  { id: '2', img: '/images/footjoy.png', brand: 'FootJoy', title: 'DryJoys Premiere Field', price: 16500, position_x: 32, position_y: 48, category: 'footwear', gender: 'mens', images: ['/images/footjoy.png'] },
-  { id: '3', img: '/images/good-hat.png', brand: 'Good Good', title: 'Big Shot Rope Hat', price: 3800, position_x: 52, position_y: 18, category: 'headwear', gender: 'mens', images: ['/images/good-hat.png'] },
-  { id: '4', img: '/images/shorts.png', brand: 'Aguila', title: 'Performance Shorts', price: 8800, position_x: 72, position_y: 58, category: 'bottoms', gender: 'mens', images: ['/images/shorts.png'] },
-  { id: '5', img: '/images/yeti-cooler.png', brand: 'YETI x Wrong Club', title: 'Roadie 24 Cooler', price: 27500, position_x: 22, position_y: 68, category: 'bags', gender: 'mens', images: ['/images/yeti-cooler.png'] },
-  { id: '6', img: '/images/yeti-bottle.png', brand: 'YETI x Wrong Club', title: 'Rambler 26oz Bottle', price: 4500, position_x: 42, position_y: 38, category: 'accessories', gender: 'mens', images: ['/images/yeti-bottle.png'] },
-  { id: '7', img: '/images/walkers-polo.png', brand: 'Walkers x Wrong Club', title: 'Shortbread Polo', price: 9500, position_x: 62, position_y: 72, category: 'tops', gender: 'mens', images: ['/images/walkers-polo.png'] },
-  { id: '8', img: '/images/yeti-bucket-hat.png', brand: 'YETI x Wrong Club', title: 'Toile Bucket Hat', price: 4800, position_x: 82, position_y: 28, category: 'headwear', gender: 'mens', images: ['/images/yeti-bucket-hat.png'] },
-  { id: '9', img: '/images/malbon.png', brand: 'Malbon Golf', title: 'Script Bucket Hat', price: 5800, position_x: 48, position_y: 62, category: 'headwear', gender: 'womens', images: ['/images/malbon.png'] },
-  { id: '10', img: '/images/metalwood.png', brand: 'Metalwood Studio', title: 'Camo Sleeve Crewneck', price: 14500, position_x: 55, position_y: 35, category: 'tops', gender: 'mens', images: ['/images/metalwood.png'] },
-  { id: '11', img: '/images/red-snapper-tees.png', brand: 'Red Snapper', title: 'Golf Tees - Sardine Tin', price: 2500, position_x: 75, position_y: 45, category: 'accessories', gender: 'mens', images: ['/images/red-snapper-tees.png'] },
-  { id: '12', img: '/images/walkers-rain-jacket.png', brand: 'Walkers x Wrong Club', title: 'Rain Jacket', price: 29500, position_x: 38, position_y: 52, category: 'tops', gender: 'mens', images: ['/images/walkers-rain-jacket.png'] },
-  { id: '13', img: '/images/walkers-socks.png', brand: 'Walkers x Wrong Club', title: 'Merino Wool Shortbread Socks', price: 3000, position_x: 28, position_y: 35, category: 'accessories', gender: 'mens', images: ['/images/walkers-socks.png'] },
-  { id: '14', img: '/images/walkers-golf-balls.png', brand: 'Walkers x Wrong Club', title: 'Shortbread Golf Balls (3-Pack)', price: 1500, position_x: 65, position_y: 55, category: 'accessories', gender: 'mens', images: ['/images/walkers-golf-balls.png'] },
-  { id: '15', img: '/images/walkers-trousers.png', brand: 'Walkers x Wrong Club', title: 'Golf Trousers - Cream', price: 7500, position_x: 18, position_y: 58, category: 'bottoms', gender: 'mens', images: ['/images/walkers-trousers.png'] },
-  { id: '16', img: '/images/fairway-fingers.png', brand: 'Walkers x Wrong Club', title: 'Fairway Fingers Shortbread', price: 500, position_x: 30, position_y: 45, category: 'accessories', gender: 'mens', images: ['/images/fairway-fingers.png'] },
-  { id: '17', img: '/images/vinamilk-tee.png', brand: 'Vinamilk x Wrong Club', title: 'Vinamilk x Wrong Club Tee', price: 8500, position_x: 45, position_y: 32, category: 'tops', gender: 'mens', images: ['/images/vinamilk-tee.png'] },
-  { id: '18', img: '/images/vinamilk-longsleeve.png', brand: 'Vinamilk x Wrong Club', title: 'Vinamilk x Wrong Club Long Sleeve', price: 9500, position_x: 70, position_y: 48, category: 'tops', gender: 'mens', images: ['/images/vinamilk-longsleeve.png'] },
-  { id: '19', img: '/images/vinamilk-trousers.png', brand: 'Vinamilk x Wrong Club', title: 'Vinamilk x Wrong Club Trousers', price: 12000, position_x: 55, position_y: 62, category: 'bottoms', gender: 'mens', images: ['/images/vinamilk-trousers.png'] },
-  { id: '20', img: '/images/vinamilk-gilet.png', brand: 'Vinamilk x Wrong Club', title: 'The Milkman Gilet', price: 11000, position_x: 35, position_y: 70, category: 'tops', gender: 'mens', images: ['/images/vinamilk-gilet.png'] },
-  { id: '21', img: '/images/vinamilk-candle.png', brand: 'Vinamilk x Wrong Club', title: 'The Vanillamilk Candle', price: 1000, position_x: 80, position_y: 55, category: 'accessories', gender: 'mens', images: ['/images/vinamilk-candle.png'] },
+  { id: '1', img: '/images/walkers-varsity-jacket.png', brand: 'Walkers x Wrong Club', title: 'Varsity Jacket', price: 24500, position_x: 12, position_y: 22, category: 'tops', gender: 'mens', size: 'L', images: ['/images/walkers-varsity-jacket.png'] },
+  { id: '2', img: '/images/footjoy.png', brand: 'FootJoy', title: 'DryJoys Premiere Field', price: 16500, position_x: 32, position_y: 48, category: 'footwear', gender: 'mens', size: '10', images: ['/images/footjoy.png'] },
+  { id: '3', img: '/images/good-hat.png', brand: 'Good Good', title: 'Big Shot Rope Hat', price: 3800, position_x: 52, position_y: 18, category: 'headwear', gender: 'mens', size: 'One Size', images: ['/images/good-hat.png'] },
+  { id: '4', img: '/images/shorts.png', brand: 'Aguila', title: 'Performance Shorts', price: 8800, position_x: 72, position_y: 58, category: 'bottoms', gender: 'mens', size: 'M', images: ['/images/shorts.png'] },
+  { id: '5', img: '/images/yeti-cooler.png', brand: 'YETI x Wrong Club', title: 'Roadie 24 Cooler', price: 27500, position_x: 22, position_y: 68, category: 'bags', gender: 'mens', size: 'One Size', images: ['/images/yeti-cooler.png'] },
+  { id: '6', img: '/images/yeti-bottle.png', brand: 'YETI x Wrong Club', title: 'Rambler 26oz Bottle', price: 4500, position_x: 42, position_y: 38, category: 'accessories', gender: 'mens', size: 'One Size', images: ['/images/yeti-bottle.png'] },
+  { id: '7', img: '/images/walkers-polo.png', brand: 'Walkers x Wrong Club', title: 'Shortbread Polo', price: 9500, position_x: 62, position_y: 72, category: 'tops', gender: 'mens', size: 'L', images: ['/images/walkers-polo.png'] },
+  { id: '8', img: '/images/yeti-bucket-hat.png', brand: 'YETI x Wrong Club', title: 'Toile Bucket Hat', price: 4800, position_x: 82, position_y: 28, category: 'headwear', gender: 'mens', size: 'One Size', images: ['/images/yeti-bucket-hat.png'] },
+  { id: '9', img: '/images/malbon.png', brand: 'Malbon Golf', title: 'Script Bucket Hat', price: 5800, position_x: 48, position_y: 62, category: 'headwear', gender: 'womens', size: 'One Size', images: ['/images/malbon.png'] },
+  { id: '10', img: '/images/metalwood.png', brand: 'Metalwood Studio', title: 'Camo Sleeve Crewneck', price: 14500, position_x: 55, position_y: 35, category: 'tops', gender: 'mens', size: 'M', images: ['/images/metalwood.png'] },
+  { id: '11', img: '/images/red-snapper-tees.png', brand: 'Red Snapper', title: 'Golf Tees - Sardine Tin', price: 2500, position_x: 75, position_y: 45, category: 'accessories', gender: 'mens', size: 'One Size', images: ['/images/red-snapper-tees.png'] },
+  { id: '12', img: '/images/walkers-rain-jacket.png', brand: 'Walkers x Wrong Club', title: 'Rain Jacket', price: 29500, position_x: 38, position_y: 52, category: 'tops', gender: 'mens', size: 'XL', images: ['/images/walkers-rain-jacket.png'] },
+  { id: '13', img: '/images/walkers-socks.png', brand: 'Walkers x Wrong Club', title: 'Merino Wool Shortbread Socks', price: 3000, position_x: 28, position_y: 35, category: 'accessories', gender: 'mens', size: 'One Size', images: ['/images/walkers-socks.png'] },
+  { id: '14', img: '/images/walkers-golf-balls.png', brand: 'Walkers x Wrong Club', title: 'Shortbread Golf Balls (3-Pack)', price: 1500, position_x: 65, position_y: 55, category: 'accessories', gender: 'mens', size: 'One Size', images: ['/images/walkers-golf-balls.png'] },
+  { id: '15', img: '/images/walkers-trousers.png', brand: 'Walkers x Wrong Club', title: 'Golf Trousers - Cream', price: 7500, position_x: 18, position_y: 58, category: 'bottoms', gender: 'mens', size: '32', images: ['/images/walkers-trousers.png'] },
+  { id: '16', img: '/images/fairway-fingers.png', brand: 'Walkers x Wrong Club', title: 'Fairway Fingers Shortbread', price: 500, position_x: 30, position_y: 45, category: 'accessories', gender: 'mens', size: 'One Size', images: ['/images/fairway-fingers.png'] },
+  { id: '17', img: '/images/vinamilk-tee.png', brand: 'Vinamilk x Wrong Club', title: 'Vinamilk x Wrong Club Tee', price: 8500, position_x: 45, position_y: 32, category: 'tops', gender: 'mens', size: 'M', images: ['/images/vinamilk-tee.png'] },
+  { id: '18', img: '/images/vinamilk-longsleeve.png', brand: 'Vinamilk x Wrong Club', title: 'Vinamilk x Wrong Club Long Sleeve', price: 9500, position_x: 70, position_y: 48, category: 'tops', gender: 'mens', size: 'L', images: ['/images/vinamilk-longsleeve.png'] },
+  { id: '19', img: '/images/vinamilk-trousers.png', brand: 'Vinamilk x Wrong Club', title: 'Vinamilk x Wrong Club Trousers', price: 12000, position_x: 55, position_y: 62, category: 'bottoms', gender: 'mens', size: '34', images: ['/images/vinamilk-trousers.png'] },
+  { id: '20', img: '/images/vinamilk-gilet.png', brand: 'Vinamilk x Wrong Club', title: 'The Milkman Gilet', price: 11000, position_x: 35, position_y: 70, category: 'tops', gender: 'mens', size: 'L', images: ['/images/vinamilk-gilet.png'] },
+  { id: '21', img: '/images/vinamilk-candle.png', brand: 'Vinamilk x Wrong Club', title: 'The Vanillamilk Candle', price: 1000, position_x: 80, position_y: 55, category: 'accessories', gender: 'mens', size: 'One Size', images: ['/images/vinamilk-candle.png'] },
 ]
 
 const posters = [
@@ -43,11 +44,13 @@ function formatPrice(cents: number) {
 }
 
 export default function BrowsePage() {
+  const { profile } = useAuth()
   const [isMobile, setIsMobile] = useState(false)
   const [viewMode, setViewMode] = useState<'course' | 'grid'>('course')
   const [hoveredListing, setHoveredListing] = useState<typeof mockListings[0] | null>(null)
   const [activeGender, setActiveGender] = useState<string | null>(null)
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
+  const [mySizesOnly, setMySizesOnly] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [isMounted, setIsMounted] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
@@ -108,6 +111,24 @@ export default function BrowsePage() {
       if (!matchesSearch) return false
     }
 
+    // Size filter - "My Sizes Only"
+    if (mySizesOnly && profile) {
+      // Get user's size for this category
+      let userSize: string | null = null
+      if (listing.category === 'tops' && profile.size_tops) userSize = profile.size_tops
+      else if (listing.category === 'bottoms' && profile.size_bottoms_waist) userSize = profile.size_bottoms_waist
+      else if (listing.category === 'footwear' && profile.size_footwear) userSize = profile.size_footwear
+      else if (listing.category === 'headwear' && profile.size_headwear) userSize = profile.size_headwear
+      
+      // Show if: user has size set AND (item matches size OR item is one-size)
+      if (userSize) {
+        if (listing.size !== userSize && listing.size !== 'One Size') return false
+      } else {
+        // If user hasn't set size for this category, only show one-size items
+        if (listing.size !== 'One Size') return false
+      }
+    }
+
     // Mobile category filter
     if (isMobile) {
       if (activeCategory && activeCategory !== 'All') {
@@ -139,6 +160,7 @@ export default function BrowsePage() {
   const clearFilters = () => {
     setActiveGender(null)
     setActiveCategory(null)
+    setMySizesOnly(false)
   }
 
   const handleMouseDown = (e: React.MouseEvent, listing: typeof mockListings[0]) => {
@@ -218,7 +240,7 @@ export default function BrowsePage() {
               <button
                 onClick={clearFilters}
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                  !activeGender && !activeCategory
+                  !activeGender && !activeCategory && !mySizesOnly
                     ? 'bg-[var(--brand)] text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
@@ -226,7 +248,20 @@ export default function BrowsePage() {
                 All
               </button>
 
-              {/* Mens Dropdown */}
+              {/* My Sizes Only Button */}
+              {profile && (profile.size_tops || profile.size_bottoms_waist || profile.size_footwear || profile.size_headwear) && (
+                <button
+                  onClick={() => setMySizesOnly(!mySizesOnly)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                    mySizesOnly
+                      ? 'bg-green-500 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                  title="Filter by your saved sizes from Settings"
+                >
+                  👕 My Sizes Only
+                </button>
+              )}
               <div 
                 className="relative z-50"
                 onMouseEnter={() => setOpenDropdown('mens')}

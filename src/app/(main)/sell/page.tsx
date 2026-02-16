@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
+import { FitScaleSlider } from '@/components'
 
 interface FormData {
   title: string
@@ -31,6 +32,8 @@ export default function SellPage() {
   const [submitted, setSubmitted] = useState(false)
   const [showPricingCard, setShowPricingCard] = useState(false)
   const [allowOffers, setAllowOffers] = useState(false)
+  const [fitScale, setFitScale] = useState(0)
+  const [isOneSize, setIsOneSize] = useState(false)
 
   useEffect(() => {
     window.scrollTo(0, 0)
@@ -75,6 +78,8 @@ export default function SellPage() {
         price: '',
       })
       setPhotoAdded(false)
+      setFitScale(0)
+      setIsOneSize(false)
     }, 2000)
   }
 
@@ -296,6 +301,32 @@ export default function SellPage() {
                     className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5f6651] focus:border-transparent"
                   />
                 </div>
+
+                {/* One Size Checkbox */}
+                <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                  <input
+                    type="checkbox"
+                    id="isOneSize"
+                    checked={isOneSize}
+                    onChange={(e) => setIsOneSize(e.target.checked)}
+                    className="w-5 h-5 text-[#5f6651] rounded focus:ring-2 focus:ring-[#5f6651]"
+                  />
+                  <label htmlFor="isOneSize" className="text-sm font-semibold text-gray-900 cursor-pointer">
+                    This is a One Size / Adjustable item
+                  </label>
+                </div>
+
+                {/* Fit Scale */}
+                {!isOneSize && (
+                  <div className="p-6 bg-blue-50 rounded-xl border border-blue-200">
+                    <FitScaleSlider
+                      value={fitScale}
+                      onChange={setFitScale}
+                      label="Fit Scale"
+                      description="How does this item fit compared to the size label? Helps buyers find the perfect fit."
+                    />
+                  </div>
+                )}
 
                 {/* Description */}
                 <div>
