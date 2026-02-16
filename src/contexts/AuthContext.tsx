@@ -194,7 +194,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             username: username.toLowerCase(),
             display_name: displayName || username,
           },
-          emailRedirectTo: `${window.location.origin}/auth/confirm`,
+          emailRedirectTo: `http://localhost:${typeof window !== 'undefined' ? window.location.port : '3001'}/auth/confirm`,
         },
       })
 
