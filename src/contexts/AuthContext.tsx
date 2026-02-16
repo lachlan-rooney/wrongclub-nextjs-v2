@@ -29,10 +29,28 @@ interface Profile {
   created_at: string
 }
 
+export interface Address {
+  id: string
+  user_id: string
+  full_name: string
+  address_line_1: string
+  address_line_2: string | null
+  city: string
+  state: string
+  zip_code: string
+  country: string
+  phone: string | null
+  is_default: boolean
+  is_return_address: boolean
+  created_at: string
+  updated_at: string
+}
+
 interface AuthContextType {
   user: User | null
   profile: Profile | null
   session: Session | null
+  addresses: Address[]
   isLoading: boolean
   isAuthenticated: boolean
   signUp: (email: string, password: string, username: string, displayName?: string) => Promise<{ error: Error | null }>
@@ -43,6 +61,10 @@ interface AuthContextType {
   updatePassword: (newPassword: string) => Promise<{ error: Error | null }>
   updateProfile: (updates: Partial<Profile>) => Promise<{ error: Error | null }>
   refreshProfile: () => Promise<void>
+  fetchAddresses: () => Promise<void>
+  createAddress: (address: Omit<Address, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => Promise<{ error: Error | null; data?: Address }>
+  updateAddress: (id: string, updates: Partial<Address>) => Promise<{ error: Error | null }>
+  deleteAddress: (id: string) => Promise<{ error: Error | null }>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -51,6 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [session, setSession] = useState<Session | null>(null)
+  const [addresses, setAddresses] = useState<Address[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
   const supabase = createClient()
@@ -89,6 +112,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return null
     }
   }, [supabase])
+
+  // Fetch user's addresses from database
+  const fetchAddresses = useCallback(async (userId?: string) => {
+    try {
+      const targetUser = userId || user
+      if (!targetUser) {
+        setAddresses([])
+        return
+      }
+
+      const { data, error } = await supabase.rpc('get_my_addresses')
+
+      if (error) {
+        console.error('Error fetching addresses:', error.message)
+        setAddresses([])
+        return
+      }
+
+      setAddresses((data as Address[]) || [])
+    } catch (err) {
+      console.error('Address fetch error:', err)
+      setAddresses([])
+    }
+  }, [user, supabase])
 
   // Refresh profile data
   const refreshProfile = useCallback(async () => {
@@ -151,14 +198,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (mounted) {
               setProfile(profileData)
             }
+            // Also fetch addresses when user logs in
+            await fetchAddresses()
           }, 500)
         } else {
           setProfile(null)
+          setAddresses([])
         }
 
         // Handle specific auth events
         if (event === 'SIGNED_OUT') {
           setProfile(null)
+          setAddresses([])
           router.push('/')
         } else if (event === 'PASSWORD_RECOVERY') {
           router.push('/reset-password')
@@ -368,10 +419,109 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  // Create address
+  const createAddress = async (
+    address: Omit<Address, 'id' | 'user_id' | 'created_at' | 'updated_at'>
+  ): Promise<{ error: Error | null; data?: Address }> => {
+    try {
+      if (!user) {
+        return { error: new Error('Not authenticated') }
+      }
+
+      // If this is default, unset other defaults first
+      if (address.is_default) {
+        const returnAddressFilter = address.is_return_address
+          ? supabase.from('addresses').update({ is_default: false }).match({ user_id: user.id, is_return_address: true })
+          : supabase.from('addresses').update({ is_default: false }).match({ user_id: user.id, is_return_address: false })
+        
+        await returnAddressFilter
+      }
+
+      const { data, error } = await supabase
+        .from('addresses')
+        .insert([{ ...address, user_id: user.id }])
+        .select()
+        .single()
+
+      if (error) {
+        return { error }
+      }
+
+      await fetchAddresses()
+      return { error: null, data: data as Address }
+    } catch (err) {
+      return { error: err as Error }
+    }
+  }
+
+  // Update address
+  const updateAddress = async (id: string, updates: Partial<Address>): Promise<{ error: Error | null }> => {
+    try {
+      if (!user) {
+        return { error: new Error('Not authenticated') }
+      }
+
+      // If setting as default, unset other defaults first
+      if (updates.is_default) {
+        const addressToUpdate = addresses.find(a => a.id === id)
+        if (addressToUpdate) {
+          await supabase
+            .from('addresses')
+            .update({ is_default: false })
+            .match({
+              user_id: user.id,
+              is_return_address: addressToUpdate.is_return_address,
+              id: { neq: id }, // Not this address
+            })
+        }
+      }
+
+      const { error } = await supabase
+        .from('addresses')
+        .update(updates)
+        .eq('id', id)
+        .eq('user_id', user.id)
+
+      if (error) {
+        return { error }
+      }
+
+      await fetchAddresses()
+      return { error: null }
+    } catch (err) {
+      return { error: err as Error }
+    }
+  }
+
+  // Delete address
+  const deleteAddress = async (id: string): Promise<{ error: Error | null }> => {
+    try {
+      if (!user) {
+        return { error: new Error('Not authenticated') }
+      }
+
+      const { error } = await supabase
+        .from('addresses')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id)
+
+      if (error) {
+        return { error }
+      }
+
+      await fetchAddresses()
+      return { error: null }
+    } catch (err) {
+      return { error: err as Error }
+    }
+  }
+
   const value: AuthContextType = {
     user,
     profile,
     session,
+    addresses,
     isLoading,
     isAuthenticated: !!user,
     signUp,
@@ -382,6 +532,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     updatePassword,
     updateProfile,
     refreshProfile,
+    fetchAddresses,
+    createAddress,
+    updateAddress,
+    deleteAddress,
   }
 
   return (

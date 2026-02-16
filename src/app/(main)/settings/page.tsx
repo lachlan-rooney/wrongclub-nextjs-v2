@@ -103,7 +103,7 @@ function ToggleSwitch({ enabled, onChange }: { enabled: boolean; onChange: (valu
 }
 
 export default function SettingsPage() {
-  const { profile, isLoading, user } = useAuth()
+  const { profile, isLoading, user, addresses, fetchAddresses } = useAuth()
   const [settings, setSettings] = useState(mockSettings)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
@@ -134,6 +134,13 @@ export default function SettingsPage() {
       }))
     }
   }, [profile])
+
+  // Fetch addresses on mount
+  useEffect(() => {
+    if (user) {
+      fetchAddresses()
+    }
+  }, [user, fetchAddresses])
 
   // Show loading state
   if (isLoading) {
@@ -305,44 +312,75 @@ export default function SettingsPage() {
         <section id="addresses" className="bg-white border border-gray-200 rounded-xl p-8 mb-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">Shipping & Addresses</h2>
 
-          {/* Default Address */}
-          {settings.addresses.map((addr) => (
-            <div key={addr.id} className="mb-8 pb-8 border-b border-gray-200">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <p className="text-sm font-semibold text-gray-700">Default Shipping Address</p>
+          {/* Shipping Addresses */}
+          {addresses.filter(a => !a.is_return_address).length > 0 ? (
+            addresses
+              .filter(a => !a.is_return_address)
+              .map((addr) => (
+                <div key={addr.id} className="mb-8 pb-8 border-b border-gray-200">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-700">
+                        {addr.is_default ? '⭐ Default Shipping Address' : 'Shipping Address'}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button className="text-sm px-3 py-1 text-[#5f6651] hover:bg-gray-50 rounded font-medium">
+                        Edit
+                      </button>
+                      <button className="text-sm px-3 py-1 text-red-600 hover:bg-red-50 rounded font-medium">
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-4 text-sm space-y-1">
+                    {addr.is_default && <p className="font-semibold text-gray-900">✓ Default</p>}
+                    <p className="text-gray-700">{addr.full_name}</p>
+                    <p className="text-gray-700">{addr.address_line_1}</p>
+                    {addr.address_line_2 && <p className="text-gray-700">{addr.address_line_2}</p>}
+                    <p className="text-gray-700">
+                      {addr.city}, {addr.state} {addr.zip_code}
+                    </p>
+                    <p className="text-gray-700">{addr.country}</p>
+                    {addr.phone && <p className="text-gray-700">{addr.phone}</p>}
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <button className="text-sm px-3 py-1 text-[#5f6651] hover:bg-gray-50 rounded font-medium">
-                    Edit
-                  </button>
-                  <button className="text-sm px-3 py-1 text-red-600 hover:bg-red-50 rounded font-medium">
-                    Delete
-                  </button>
-                </div>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-4 text-sm space-y-1">
-                <p className="font-semibold text-gray-900">✓ Default</p>
-                <p className="text-gray-700">{addr.full_name}</p>
-                <p className="text-gray-700">{addr.address_line_1}</p>
-                <p className="text-gray-700">
-                  {addr.city}, {addr.state} {addr.zip_code}
-                </p>
-                <p className="text-gray-700">{addr.country}</p>
-                <p className="text-gray-700">{addr.phone}</p>
-              </div>
+              ))
+          ) : (
+            <div className="mb-8 pb-8 border-b border-gray-200 text-gray-500">
+              <p className="text-sm">No shipping addresses yet</p>
             </div>
-          ))}
+          )}
 
           {/* Return Address */}
           <div className="mb-8">
             <p className="text-sm font-semibold text-gray-700 mb-4">Return Address (for sellers)</p>
-            <div className="bg-gray-50 rounded-lg p-4 text-sm flex justify-between items-center">
-              <p className="text-gray-700">Same as shipping address</p>
-              <button className="text-sm px-3 py-1 text-[#5f6651] hover:bg-gray-100 rounded font-medium">
-                Edit
-              </button>
-            </div>
+            {addresses.find(a => a.is_return_address) ? (
+              <div className="bg-gray-50 rounded-lg p-4 text-sm space-y-1">
+                {(() => {
+                  const returnAddr = addresses.find(a => a.is_return_address)
+                  return (
+                    <>
+                      <p className="text-gray-700">{returnAddr?.full_name}</p>
+                      <p className="text-gray-700">{returnAddr?.address_line_1}</p>
+                      {returnAddr?.address_line_2 && <p className="text-gray-700">{returnAddr.address_line_2}</p>}
+                      <p className="text-gray-700">
+                        {returnAddr?.city}, {returnAddr?.state} {returnAddr?.zip_code}
+                      </p>
+                      <p className="text-gray-700">{returnAddr?.country}</p>
+                      {returnAddr?.phone && <p className="text-gray-700">{returnAddr.phone}</p>}
+                    </>
+                  )
+                })()}
+              </div>
+            ) : (
+              <div className="bg-gray-50 rounded-lg p-4 text-sm flex justify-between items-center">
+                <p className="text-gray-700">None - returns will use shipping address</p>
+                <button className="text-sm px-3 py-1 text-[#5f6651] hover:bg-gray-100 rounded font-medium">
+                  Add
+                </button>
+              </div>
+            )}
           </div>
 
           <button className="w-full border border-[#5f6651] text-[#5f6651] py-2 rounded-lg font-medium hover:bg-gray-50">
