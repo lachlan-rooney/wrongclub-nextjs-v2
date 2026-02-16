@@ -103,11 +103,10 @@ function ToggleSwitch({ enabled, onChange }: { enabled: boolean; onChange: (valu
 }
 
 export default function SettingsPage() {
-  const { profile, isLoading, user, addresses, fetchAddresses, notification_preferences, updateNotificationPreferences } = useAuth()
+  const { profile, isLoading, user, addresses, fetchAddresses, notification_preferences, updateNotificationPreferences, privacy_settings, updatePrivacySettings } = useAuth()
   const [settings, setSettings] = useState(mockSettings)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
-  const [privacy, setPrivacy] = useState(mockSettings.privacy)
   const [sizes, setSizes] = useState(mockSettings.sizes)
   const [seller, setSeller] = useState(mockSettings.seller)
 
@@ -564,86 +563,92 @@ export default function SettingsPage() {
         <section id="privacy" className="bg-white border border-gray-200 rounded-xl p-8 mb-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">Privacy</h2>
 
-          {/* Profile Visibility */}
-          <div className="mb-8 pb-8 border-b border-gray-200">
-            <p className="text-sm font-semibold text-gray-700 mb-4">Profile Visibility</p>
-            <div className="space-y-3">
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="radio"
-                  name="profile_visibility"
-                  checked={privacy.profile_public}
-                  onChange={() => setPrivacy({ ...privacy, profile_public: true })}
-                  className="w-4 h-4"
-                />
-                <span className="text-sm text-gray-700">Public - Anyone can view your profile</span>
-              </label>
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="radio"
-                  name="profile_visibility"
-                  checked={!privacy.profile_public}
-                  onChange={() => setPrivacy({ ...privacy, profile_public: false })}
-                  className="w-4 h-4"
-                />
-                <span className="text-sm text-gray-700">Private - Only followers can view</span>
-              </label>
-            </div>
-          </div>
+          {privacy_settings ? (
+            <>
+              {/* Profile Visibility */}
+              <div className="mb-8 pb-8 border-b border-gray-200">
+                <p className="text-sm font-semibold text-gray-700 mb-4">Profile Visibility</p>
+                <div className="space-y-3">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="profile_visibility"
+                      checked={privacy_settings.profile_public}
+                      onChange={() => updatePrivacySettings({ profile_public: true })}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm text-gray-700">Public - Anyone can view your profile</span>
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="profile_visibility"
+                      checked={!privacy_settings.profile_public}
+                      onChange={() => updatePrivacySettings({ profile_public: false })}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm text-gray-700">Private - Only followers can view</span>
+                  </label>
+                </div>
+              </div>
 
-          {/* Show on Profile */}
-          <div className="mb-8 pb-8 border-b border-gray-200">
-            <p className="text-sm font-semibold text-gray-700 mb-4">Show on Profile</p>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <p className="text-sm text-gray-700">Handicap score</p>
-                <ToggleSwitch
-                  enabled={privacy.show_handicap}
-                  onChange={(value) => setPrivacy({ ...privacy, show_handicap: value })}
-                />
+              {/* Show on Profile */}
+              <div className="mb-8 pb-8 border-b border-gray-200">
+                <p className="text-sm font-semibold text-gray-700 mb-4">Show on Profile</p>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm text-gray-700">Handicap score</p>
+                    <ToggleSwitch
+                      enabled={privacy_settings.show_handicap}
+                      onChange={(value) => updatePrivacySettings({ show_handicap: value })}
+                    />
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm text-gray-700">Sales count</p>
+                    <ToggleSwitch
+                      enabled={privacy_settings.show_sales}
+                      onChange={(value) => updatePrivacySettings({ show_sales: value })}
+                    />
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm text-gray-700">Purchase history</p>
+                    <ToggleSwitch
+                      enabled={privacy_settings.show_purchases}
+                      onChange={(value) => updatePrivacySettings({ show_purchases: value })}
+                    />
+                  </div>
+                </div>
               </div>
-              <div className="flex justify-between items-center">
-                <p className="text-sm text-gray-700">Sales count</p>
-                <ToggleSwitch
-                  enabled={privacy.show_sales}
-                  onChange={(value) => setPrivacy({ ...privacy, show_sales: value })}
-                />
-              </div>
-              <div className="flex justify-between items-center">
-                <p className="text-sm text-gray-700">Purchase history</p>
-                <ToggleSwitch
-                  enabled={privacy.show_purchases}
-                  onChange={(value) => setPrivacy({ ...privacy, show_purchases: value })}
-                />
-              </div>
-            </div>
-          </div>
 
-          {/* Messaging */}
-          <div className="mb-8 pb-8 border-b border-gray-200">
-            <div className="flex justify-between items-start">
+              {/* Messaging */}
+              <div className="mb-8 pb-8 border-b border-gray-200">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-700">Messaging</p>
+                    <p className="text-xs text-gray-600 mt-1">Allow messages from anyone</p>
+                    <p className="text-xs text-gray-600">(Turn off to only receive messages from buyers/sellers)</p>
+                  </div>
+                  <ToggleSwitch
+                    enabled={privacy_settings.allow_messages_all}
+                    onChange={(value) => updatePrivacySettings({ allow_messages_all: value })}
+                  />
+                </div>
+              </div>
+
+              {/* Blocked Users */}
               <div>
-                <p className="text-sm font-semibold text-gray-700">Messaging</p>
-                <p className="text-xs text-gray-600 mt-1">Allow messages from anyone</p>
-                <p className="text-xs text-gray-600">(Turn off to only receive messages from buyers/sellers)</p>
+                <p className="text-sm font-semibold text-gray-700 mb-2">Blocked Users</p>
+                <div className="flex justify-between items-center">
+                  <p className="text-sm text-gray-600">You haven't blocked anyone</p>
+                  <button className="text-sm text-[#5f6651] hover:bg-gray-50 px-3 py-1 rounded font-medium">
+                    Manage Blocked Users
+                  </button>
+                </div>
               </div>
-              <ToggleSwitch
-                enabled={privacy.allow_messages_all}
-                onChange={(value) => setPrivacy({ ...privacy, allow_messages_all: value })}
-              />
-            </div>
-          </div>
-
-          {/* Blocked Users */}
-          <div>
-            <p className="text-sm font-semibold text-gray-700 mb-2">Blocked Users</p>
-            <div className="flex justify-between items-center">
-              <p className="text-sm text-gray-600">You haven't blocked anyone</p>
-              <button className="text-sm text-[#5f6651] hover:bg-gray-50 px-3 py-1 rounded font-medium">
-                Manage Blocked Users
-              </button>
-            </div>
-          </div>
+            </>
+          ) : (
+            <p className="text-gray-500">Loading privacy settings...</p>
+          )}
         </section>
 
         {/* SECTION 6: Your Sizes */}

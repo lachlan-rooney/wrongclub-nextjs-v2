@@ -63,12 +63,24 @@ export interface NotificationPreferences {
   updated_at: string
 }
 
+export interface PrivacySettings {
+  id: string
+  profile_public: boolean
+  show_handicap: boolean
+  show_sales: boolean
+  show_purchases: boolean
+  allow_messages_all: boolean
+  created_at: string
+  updated_at: string
+}
+
 interface AuthContextType {
   user: User | null
   profile: Profile | null
   session: Session | null
   addresses: Address[]
   notification_preferences: NotificationPreferences | null
+  privacy_settings: PrivacySettings | null
   isLoading: boolean
   isAuthenticated: boolean
   signUp: (email: string, password: string, username: string, displayName?: string) => Promise<{ error: Error | null }>
@@ -85,6 +97,8 @@ interface AuthContextType {
   deleteAddress: (id: string) => Promise<{ error: Error | null }>
   fetchNotificationPreferences: () => Promise<void>
   updateNotificationPreferences: (updates: Partial<NotificationPreferences>) => Promise<{ error: Error | null }>
+  fetchPrivacySettings: () => Promise<void>
+  updatePrivacySettings: (updates: Partial<PrivacySettings>) => Promise<{ error: Error | null }>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -95,6 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [addresses, setAddresses] = useState<Address[]>([])
   const [notification_preferences, setNotificationPreferences] = useState<NotificationPreferences | null>(null)
+  const [privacy_settings, setPrivacySettings] = useState<PrivacySettings | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
   const supabase = createClient()
@@ -219,14 +234,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (mounted) {
               setProfile(profileData)
             }
-            // Also fetch addresses and notification preferences when user logs in
+            // Also fetch addresses, notification & privacy preferences when user logs in
             await fetchAddresses()
             await fetchNotificationPreferences()
+            await fetchPrivacySettings()
           }, 500)
         } else {
           setProfile(null)
           setAddresses([])
           setNotificationPreferences(null)
+          setPrivacySettings(null)
         }
 
         // Handle specific auth events
@@ -234,6 +251,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setProfile(null)
           setAddresses([])
           setNotificationPreferences(null)
+          setPrivacySettings(null)
           router.push('/')
         } else if (event === 'PASSWORD_RECOVERY') {
           router.push('/reset-password')
@@ -591,12 +609,63 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  // Fetch privacy settings
+  const fetchPrivacySettings = useCallback(async () => {
+    try {
+      if (!user) {
+        setPrivacySettings(null)
+        return
+      }
+
+      const { data, error } = await supabase.rpc('get_my_privacy_settings')
+
+      if (error) {
+        console.error('Error fetching privacy settings:', error.message)
+        setPrivacySettings(null)
+        return
+      }
+
+      if (data && data.length > 0) {
+        setPrivacySettings(data[0] as PrivacySettings)
+      }
+    } catch (err) {
+      console.error('Privacy settings fetch error:', err)
+      setPrivacySettings(null)
+    }
+  }, [user, supabase])
+
+  // Update privacy settings
+  const updatePrivacySettings = async (
+    updates: Partial<PrivacySettings>
+  ): Promise<{ error: Error | null }> => {
+    try {
+      if (!user) {
+        return { error: new Error('Not authenticated') }
+      }
+
+      const { error } = await supabase
+        .from('privacy_settings')
+        .update(updates)
+        .eq('user_id', user.id)
+
+      if (error) {
+        return { error }
+      }
+
+      await fetchPrivacySettings()
+      return { error: null }
+    } catch (err) {
+      return { error: err as Error }
+    }
+  }
+
   const value: AuthContextType = {
     user,
     profile,
     session,
     addresses,
     notification_preferences,
+    privacy_settings,
     isLoading,
     isAuthenticated: !!user,
     signUp,
@@ -613,6 +682,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     deleteAddress,
     fetchNotificationPreferences,
     updateNotificationPreferences,
+    fetchPrivacySettings,
+    updatePrivacySettings,
   }
 
   return (
