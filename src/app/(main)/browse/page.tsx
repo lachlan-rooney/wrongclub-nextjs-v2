@@ -43,6 +43,38 @@ function formatPrice(cents: number) {
   }).format(cents / 100)
 }
 
+/**
+ * Get adjacent sizes (size ± 1) based on category
+ */
+function getAdjacentSizes(size: string, category: string): string[] {
+  const adjacentSizes = [size] // Always include the exact size
+
+  if (['tops', 'headwear'].includes(category)) {
+    const sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL']
+    const index = sizes.indexOf(size)
+    if (index > 0) adjacentSizes.push(sizes[index - 1])
+    if (index < sizes.length - 1) adjacentSizes.push(sizes[index + 1])
+  } else if (['bottoms', 'footwear'].includes(category)) {
+    // For numeric sizes
+    const num = parseFloat(size)
+    if (!isNaN(num)) {
+      const smaller = (num - 1).toString()
+      const larger = (num + 1).toString()
+      // Handle .5 sizes for footwear
+      if (size.includes('.5')) {
+        adjacentSizes.push((num - 1).toFixed(1))
+        adjacentSizes.push((num + 1).toFixed(1))
+      } else {
+        // For whole sizes like pants waist
+        if (num > 28) adjacentSizes.push(smaller)
+        if (num < 44) adjacentSizes.push(larger)
+      }
+    }
+  }
+
+  return adjacentSizes
+}
+
 export default function BrowsePage() {
   const { profile } = useAuth()
   const [isMobile, setIsMobile] = useState(false)
@@ -51,6 +83,7 @@ export default function BrowsePage() {
   const [activeGender, setActiveGender] = useState<string | null>(null)
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
   const [mySizesOnly, setMySizesOnly] = useState(false)
+  const [expandSizeRange, setExpandSizeRange] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [isMounted, setIsMounted] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
@@ -120,9 +153,14 @@ export default function BrowsePage() {
       else if (listing.category === 'footwear' && profile.size_footwear) userSize = profile.size_footwear
       else if (listing.category === 'headwear' && profile.size_headwear) userSize = profile.size_headwear
       
-      // Show if: user has size set AND (item matches size OR item is one-size)
       if (userSize) {
-        if (listing.size !== userSize && listing.size !== 'One Size') return false
+        // Get sizes to match (exact + adjacent if expanded)
+        const sizesToMatch = expandSizeRange 
+          ? getAdjacentSizes(userSize, listing.category)
+          : [userSize]
+        
+        // Show if: item matches one of the sizes OR item is one-size
+        if (!sizesToMatch.includes(listing.size) && listing.size !== 'One Size') return false
       } else {
         // If user hasn't set size for this category, only show one-size items
         if (listing.size !== 'One Size') return false
@@ -161,6 +199,7 @@ export default function BrowsePage() {
     setActiveGender(null)
     setActiveCategory(null)
     setMySizesOnly(false)
+    setExpandSizeRange(false)
   }
 
   const handleMouseDown = (e: React.MouseEvent, listing: typeof mockListings[0]) => {
@@ -250,17 +289,32 @@ export default function BrowsePage() {
 
               {/* My Sizes Only Button */}
               {profile && (profile.size_tops || profile.size_bottoms_waist || profile.size_footwear || profile.size_headwear) && (
-                <button
-                  onClick={() => setMySizesOnly(!mySizesOnly)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                    mySizesOnly
-                      ? 'bg-green-500 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                  title="Filter by your saved sizes from Settings"
-                >
-                  👕 My Sizes Only
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setMySizesOnly(!mySizesOnly)}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                      mySizesOnly
+                        ? 'bg-green-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                    title="Filter by your saved sizes from Settings"
+                  >
+                    👕 My Sizes Only
+                  </button>
+                  {mySizesOnly && (
+                    <button
+                      onClick={() => setExpandSizeRange(!expandSizeRange)}
+                      className={`px-3 py-2 rounded-full text-xs font-medium transition-all ${
+                        expandSizeRange
+                          ? 'bg-amber-500 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                      title="Include sizes just outside your range (±1 size)"
+                    >
+                      {expandSizeRange ? '📏 ±1 Size' : '±1 Size'}
+                    </button>
+                  )}
+                </div>
               )}
               <div 
                 className="relative z-50"
@@ -400,6 +454,35 @@ export default function BrowsePage() {
                   {cat}
                 </button>
               ))}
+              {profile && (profile.size_tops || profile.size_bottoms_waist || profile.size_footwear || profile.size_headwear) && (
+                <>
+                  <div className="w-px bg-gray-300" />
+                  <button
+                    onClick={() => setMySizesOnly(!mySizesOnly)}
+                    className={`px-3 py-2 rounded-full text-xs font-medium transition-all flex-shrink-0 active:scale-95 ${
+                      mySizesOnly
+                        ? 'bg-green-500 text-white'
+                        : 'bg-white text-gray-700 border-[1.5px] border-[var(--border)]'
+                    }`}
+                    style={{ fontFamily: 'DM Sans', fontSize: '13px', fontWeight: 500 }}
+                  >
+                    👕 My Sizes
+                  </button>
+                  {mySizesOnly && (
+                    <button
+                      onClick={() => setExpandSizeRange(!expandSizeRange)}
+                      className={`px-3 py-2 rounded-full text-xs font-medium transition-all flex-shrink-0 active:scale-95 ${
+                        expandSizeRange
+                          ? 'bg-amber-500 text-white'
+                          : 'bg-white text-gray-700 border-[1.5px] border-[var(--border)]'
+                      }`}
+                      style={{ fontFamily: 'DM Sans', fontSize: '13px', fontWeight: 500 }}
+                    >
+                      {expandSizeRange ? '📏 ±1' : '±1'}
+                    </button>
+                  )}
+                </>
+              )}
             </div>
           </div>
         )}
