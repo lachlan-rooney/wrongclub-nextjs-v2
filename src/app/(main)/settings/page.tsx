@@ -102,6 +102,17 @@ function ToggleSwitch({ enabled, onChange }: { enabled: boolean; onChange: (valu
   )
 }
 
+// Helper function to get tier information
+function getTierInfo(tier?: 'birdie' | 'eagle' | 'albatross' | 'hole_in_one') {
+  const tierMap = {
+    birdie: { emoji: '🐦', name: 'Birdie', payoutDays: 5, nextTier: 'Eagle' },
+    eagle: { emoji: '🦅', name: 'Eagle', payoutDays: 3, nextTier: 'Albatross' },
+    albatross: { emoji: '🦢', name: 'Albatross', payoutDays: 2, nextTier: 'Hole in One' },
+    hole_in_one: { emoji: '🏌️', name: 'Hole in One', payoutDays: 1, nextTier: null },
+  }
+  return tierMap[tier || 'birdie']
+}
+
 export default function SettingsPage() {
   const { profile, isLoading, user, addresses, fetchAddresses, notification_preferences, updateNotificationPreferences, privacy_settings, updatePrivacySettings, updateProfile } = useAuth()
   const [settings, setSettings] = useState(mockSettings)
@@ -498,8 +509,31 @@ export default function SettingsPage() {
           {/* Payout Speed */}
           <div className="mb-8 pb-8 border-b border-gray-200">
             <p className="text-sm font-semibold text-gray-700 mb-2">Payout Speed</p>
-            <p className="text-sm text-gray-600">Your tier: 🦅 Eagle • {settings.payout_days}-day payouts</p>
-            <p className="text-sm text-gray-600">Upgrade to Albatross for 2-day payouts</p>
+            {profile ? (
+              <>
+                {(() => {
+                  const tierInfo = getTierInfo(profile.tier_seller)
+                  return (
+                    <>
+                      <p className="text-sm text-gray-600">
+                        Your tier: {tierInfo.emoji} {tierInfo.name} • {tierInfo.payoutDays}-day payouts
+                      </p>
+                      {tierInfo.nextTier && (
+                        <p className="text-sm text-gray-600">
+                          Upgrade to {tierInfo.nextTier} for {getTierInfo(
+                            tierInfo.nextTier === 'Eagle' ? 'eagle' :
+                            tierInfo.nextTier === 'Albatross' ? 'albatross' :
+                            'hole_in_one'
+                          ).payoutDays}-day payouts
+                        </p>
+                      )}
+                    </>
+                  )
+                })()}
+              </>
+            ) : (
+              <p className="text-sm text-gray-600">Loading tier information...</p>
+            )}
           </div>
 
           {/* Tax Documents */}
