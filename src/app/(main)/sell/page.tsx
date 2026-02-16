@@ -147,19 +147,6 @@ export default function SellPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
 
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-lg text-gray-600 mb-4">Please log in to list an item</p>
-          <button onClick={() => router.push('/login')} className="px-6 py-2 bg-[#5f6651] text-white rounded-lg">
-            Log In
-          </button>
-        </div>
-      </div>
-    )
-  }
-
   // Brand autocomplete
   useEffect(() => {
     if (brand.length >= 2) {
@@ -176,6 +163,20 @@ export default function SellPage() {
     setSize('')
     setIsOneSize(false)
   }, [category])
+
+  // Authentication check - conditional rendering instead of early return
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-lg text-gray-600 mb-4">Please log in to list an item</p>
+          <button onClick={() => router.push('/login')} className="px-6 py-2 bg-[#5f6651] text-white rounded-lg">
+            Log In
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   // Image handling
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
