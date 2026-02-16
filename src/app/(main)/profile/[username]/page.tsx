@@ -30,10 +30,10 @@ const mockUser = {
   prestige_buyer: 0,
   tier_seller: 'birdie',
   tier_buyer: 'birdie',
-  total_sales: 12,
-  total_purchases: 8,
-  total_earned: 84700, // cents
-  rating_score: 4.8,
+  total_sales: 0,
+  total_purchases: 0,
+  total_earned: 0, // in cents
+  rating_score: 0,
   terrain_unlocks: ['links'],
   is_verified_seller: false,
   account_type: 'individual',
@@ -210,22 +210,22 @@ export default function ProfilePage() {
                 {/* Stats */}
                 <div className="flex items-center gap-4 mt-4 flex-wrap">
                   <div className="text-center">
-                    <p className="text-xl font-bold text-gray-900">{user.handicap_seller.toFixed(1)}</p>
+                    <p className="text-xl font-bold text-gray-900">{user.handicap_seller?.toFixed(1) || '18.0'}</p>
                     <p className="text-xs text-gray-500">Handicap</p>
                   </div>
                   <div className="w-px h-12 bg-gray-200" />
                   <div className="text-center">
-                    <p className="text-xl font-bold text-gray-900">{user.total_sales}</p>
+                    <p className="text-xl font-bold text-gray-900">{user.total_sales || 0}</p>
                     <p className="text-xs text-gray-500">Sales</p>
                   </div>
                   <div className="w-px h-12 bg-gray-200" />
                   <div className="text-center">
-                    <p className="text-xl font-bold text-gray-900">{formatPrice(user.total_earned)}</p>
+                    <p className="text-xl font-bold text-gray-900">{formatPrice(user.total_earned || 0)}</p>
                     <p className="text-xs text-gray-500">Earned</p>
                   </div>
                   <div className="w-px h-12 bg-gray-200" />
                   <div className="text-center">
-                    <p className="text-xl font-bold text-gray-900">⛳ {user.rating_score}</p>
+                    <p className="text-xl font-bold text-gray-900">⛳ {user.rating_score || 0}</p>
                     <p className="text-xs text-gray-500">Rating</p>
                   </div>
                 </div>
