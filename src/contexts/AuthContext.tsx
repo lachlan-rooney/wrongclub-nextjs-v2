@@ -196,7 +196,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             username: username.toLowerCase(),
             display_name: displayName || username,
           },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `${window.location.origin}/auth/confirm`,
         },
       })
 

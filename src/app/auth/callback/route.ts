@@ -1,19 +1,24 @@
-import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
+  const error = requestUrl.searchParams.get('error')
 
-  try {
-    if (code) {
-      const supabase = await createServerSupabaseClient()
-      await supabase.auth.exchangeCodeForSession(code)
+  // Redirect to confirm page - let the client handle the code exchange
+  const confirmUrl = new URL('/auth/confirm', requestUrl.origin)
+  
+  if (code) {
+    confirmUrl.searchParams.append('code', code)
+  }
+  
+  if (error) {
+    confirmUrl.searchParams.append('error', error)
+    const errorDescription = requestUrl.searchParams.get('error_description')
+    if (errorDescription) {
+      confirmUrl.searchParams.append('error_description', errorDescription)
     }
-  } catch (error) {
-    console.error('Server-side code exchange error:', error)
   }
 
-  // Redirect to home - code exchange will be handled by client
-  return NextResponse.redirect(new URL('/', requestUrl.origin))
+  return NextResponse.redirect(confirmUrl)
 }
