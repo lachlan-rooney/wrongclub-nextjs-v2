@@ -96,7 +96,7 @@ const PRICE_SUGGESTIONS: Record<string, Record<string, Record<string, { min: num
   },
 }
 
-type ShippingOption = 'buyer_pays' | 'free' | 'flat_included'
+type ShippingOption = 'buyer_pays' | 'free'
 
 const getPremiumBrands = () => ['Titleist', 'Callaway', 'TaylorMade', 'FootJoy', 'Nike', 'Adidas', 'Puma', 'Under Armour', 'Travis Mathew', 'Peter Millar', 'Polo Ralph Lauren', 'Greyson']
 const getStandardBrands = () => ['Lululemon', 'J.Lindeberg', 'G/FORE', 'Malbon Golf', 'Eastside Golf', 'Bonobos', 'johnnie-O']
@@ -141,7 +141,6 @@ export default function SellPage() {
   const [description, setDescription] = useState('')
   const [price, setPrice] = useState('')
   const [shippingOption, setShippingOption] = useState<ShippingOption>('buyer_pays')
-  const [shippingPrice, setShippingPrice] = useState('')
 
   // UI state
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -225,9 +224,6 @@ export default function SellPage() {
     if (!size && !isOneSize) return 'Please select a size'
     if (!condition) return 'Please select a condition'
     if (!price || parseFloat(price) <= 0) return 'Please enter a valid price'
-    if (shippingOption === 'buyer_pays' && (!shippingPrice || parseFloat(shippingPrice) < 0)) {
-      return 'Please enter a shipping price'
-    }
     return null
   }
 
@@ -239,8 +235,6 @@ export default function SellPage() {
     let earnings = priceNum * (1 - platformFeeRate)
     if (shippingOption === 'free') {
       earnings -= 8
-    } else if (shippingOption === 'flat_included') {
-      earnings -= 3
     }
     return Math.max(0, earnings)
   }
@@ -272,12 +266,7 @@ export default function SellPage() {
           color: color.trim() || null,
           condition,
           price_cents: Math.round(parseFloat(price) * 100),
-          shipping_price_cents:
-            shippingOption === 'buyer_pays'
-              ? Math.round(parseFloat(shippingPrice) * 100)
-              : shippingOption === 'flat_included'
-              ? 500
-              : 0,
+          shipping_price_cents: 0,
           fit_scale: isOneSize ? 0 : fitScale,
           is_one_size: isOneSize,
           status: 'active',
@@ -716,36 +705,9 @@ export default function SellPage() {
                 }`}
               >
                 <input type="radio" name="shipping" checked={shippingOption === 'buyer_pays'} onChange={() => setShippingOption('buyer_pays')} className="mt-1" />
-                <div className="flex-1">
-                  <span className="font-medium">Buyer pays shipping</span>
-                  {shippingOption === 'buyer_pays' && (
-                    <div className="mt-2">
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
-                        <input
-                          type="number"
-                          value={shippingPrice}
-                          onChange={e => setShippingPrice(e.target.value)}
-                          placeholder="5.00"
-                          step="0.01"
-                          min="0"
-                          className="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#5f6651]"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </label>
-
-              <label
-                className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-colors ${
-                  shippingOption === 'flat_included' ? 'border-[#5f6651] bg-[#5f6651]/5' : 'border-gray-200'
-                }`}
-              >
-                <input type="radio" name="shipping" checked={shippingOption === 'flat_included'} onChange={() => setShippingOption('flat_included')} className="mt-1" />
                 <div>
-                  <span className="font-medium">$5 flat rate shipping</span>
-                  <p className="text-sm text-gray-500 mt-0.5">Buyer pays $5, you cover any extra shipping cost</p>
+                  <span className="font-medium">Buyer chooses method and pays</span>
+                  <p className="text-sm text-gray-500 mt-0.5">Buyer selects their shipping method at checkout</p>
                 </div>
               </label>
 
@@ -774,18 +736,12 @@ export default function SellPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Platform fee (10%)</span>
-                  <span className="text-red-600">-${(priceNum * 0.1).toFixed(2)}</span>
+                  <span className="text-gray-500">-${(priceNum * 0.1).toFixed(2)}</span>
                 </div>
                 {shippingOption === 'free' && (
                   <div className="flex justify-between">
                     <span className="text-gray-600">Shipping cost (est.)</span>
-                    <span className="text-red-600">-$8.00</span>
-                  </div>
-                )}
-                {shippingOption === 'flat_included' && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Shipping difference (est.)</span>
-                    <span className="text-red-600">-$3.00</span>
+                    <span className="text-gray-500">-$8.00</span>
                   </div>
                 )}
                 <div className="border-t border-gray-200 pt-2 mt-2">
