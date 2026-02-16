@@ -64,6 +64,192 @@ const COMMON_BRANDS = [
   'YETI',
 ]
 
+// Smart pricing suggestions based on category, brand tier, and condition
+const PRICE_SUGGESTIONS: Record<string, Record<string, Record<string, { min: number; avg: number; max: number }>>> = {
+  tops: {
+    premium: {
+      new_with_tags: { min: 45, avg: 65, max: 95 },
+      new_without_tags: { min: 35, avg: 50, max: 75 },
+      excellent: { min: 25, avg: 40, max: 60 },
+      good: { min: 15, avg: 28, max: 45 },
+      fair: { min: 8, avg: 15, max: 25 },
+    },
+    standard: {
+      new_with_tags: { min: 30, avg: 45, max: 65 },
+      new_without_tags: { min: 20, avg: 32, max: 50 },
+      excellent: { min: 15, avg: 25, max: 40 },
+      good: { min: 10, avg: 18, max: 30 },
+      fair: { min: 5, avg: 10, max: 18 },
+    },
+    budget: {
+      new_with_tags: { min: 15, avg: 25, max: 40 },
+      new_without_tags: { min: 10, avg: 18, max: 30 },
+      excellent: { min: 8, avg: 15, max: 25 },
+      good: { min: 5, avg: 10, max: 18 },
+      fair: { min: 3, avg: 6, max: 12 },
+    },
+  },
+  bottoms: {
+    premium: {
+      new_with_tags: { min: 50, avg: 75, max: 120 },
+      new_without_tags: { min: 40, avg: 60, max: 95 },
+      excellent: { min: 30, avg: 50, max: 75 },
+      good: { min: 20, avg: 35, max: 55 },
+      fair: { min: 10, avg: 20, max: 35 },
+    },
+    standard: {
+      new_with_tags: { min: 35, avg: 50, max: 75 },
+      new_without_tags: { min: 25, avg: 40, max: 60 },
+      excellent: { min: 18, avg: 30, max: 50 },
+      good: { min: 12, avg: 22, max: 38 },
+      fair: { min: 6, avg: 12, max: 22 },
+    },
+    budget: {
+      new_with_tags: { min: 20, avg: 30, max: 50 },
+      new_without_tags: { min: 15, avg: 23, max: 38 },
+      excellent: { min: 10, avg: 18, max: 30 },
+      good: { min: 6, avg: 12, max: 20 },
+      fair: { min: 3, avg: 7, max: 15 },
+    },
+  },
+  outerwear: {
+    premium: {
+      new_with_tags: { min: 75, avg: 120, max: 200 },
+      new_without_tags: { min: 60, avg: 100, max: 160 },
+      excellent: { min: 45, avg: 75, max: 120 },
+      good: { min: 30, avg: 50, max: 85 },
+      fair: { min: 15, avg: 30, max: 50 },
+    },
+    standard: {
+      new_with_tags: { min: 50, avg: 80, max: 130 },
+      new_without_tags: { min: 40, avg: 65, max: 105 },
+      excellent: { min: 30, avg: 50, max: 80 },
+      good: { min: 20, avg: 35, max: 60 },
+      fair: { min: 10, avg: 20, max: 35 },
+    },
+    budget: {
+      new_with_tags: { min: 25, avg: 40, max: 70 },
+      new_without_tags: { min: 20, avg: 32, max: 55 },
+      excellent: { min: 15, avg: 25, max: 45 },
+      good: { min: 10, avg: 18, max: 32 },
+      fair: { min: 5, avg: 10, max: 20 },
+    },
+  },
+  footwear: {
+    premium: {
+      new_with_tags: { min: 60, avg: 95, max: 150 },
+      new_without_tags: { min: 50, avg: 80, max: 130 },
+      excellent: { min: 40, avg: 65, max: 110 },
+      good: { min: 25, avg: 45, max: 75 },
+      fair: { min: 12, avg: 25, max: 45 },
+    },
+    standard: {
+      new_with_tags: { min: 40, avg: 60, max: 95 },
+      new_without_tags: { min: 32, avg: 50, max: 80 },
+      excellent: { min: 25, avg: 40, max: 65 },
+      good: { min: 15, avg: 28, max: 48 },
+      fair: { min: 8, avg: 15, max: 28 },
+    },
+    budget: {
+      new_with_tags: { min: 20, avg: 35, max: 55 },
+      new_without_tags: { min: 16, avg: 28, max: 45 },
+      excellent: { min: 12, avg: 22, max: 38 },
+      good: { min: 8, avg: 15, max: 28 },
+      fair: { min: 4, avg: 8, max: 15 },
+    },
+  },
+  headwear: {
+    premium: {
+      new_with_tags: { min: 30, avg: 50, max: 80 },
+      new_without_tags: { min: 25, avg: 40, max: 65 },
+      excellent: { min: 18, avg: 30, max: 50 },
+      good: { min: 12, avg: 22, max: 38 },
+      fair: { min: 6, avg: 12, max: 22 },
+    },
+    standard: {
+      new_with_tags: { min: 18, avg: 30, max: 50 },
+      new_without_tags: { min: 14, avg: 24, max: 40 },
+      excellent: { min: 10, avg: 18, max: 32 },
+      good: { min: 6, avg: 12, max: 22 },
+      fair: { min: 3, avg: 6, max: 12 },
+    },
+    budget: {
+      new_with_tags: { min: 10, avg: 18, max: 30 },
+      new_without_tags: { min: 8, avg: 14, max: 24 },
+      excellent: { min: 6, avg: 11, max: 18 },
+      good: { min: 4, avg: 8, max: 14 },
+      fair: { min: 2, avg: 4, max: 8 },
+    },
+  },
+  accessories: {
+    premium: {
+      new_with_tags: { min: 25, avg: 40, max: 65 },
+      new_without_tags: { min: 20, avg: 32, max: 50 },
+      excellent: { min: 15, avg: 25, max: 40 },
+      good: { min: 10, avg: 18, max: 30 },
+      fair: { min: 5, avg: 10, max: 18 },
+    },
+    standard: {
+      new_with_tags: { min: 15, avg: 25, max: 40 },
+      new_without_tags: { min: 12, avg: 20, max: 32 },
+      excellent: { min: 10, avg: 16, max: 26 },
+      good: { min: 6, avg: 11, max: 18 },
+      fair: { min: 3, avg: 6, max: 11 },
+    },
+    budget: {
+      new_with_tags: { min: 8, avg: 15, max: 25 },
+      new_without_tags: { min: 6, avg: 12, max: 20 },
+      excellent: { min: 5, avg: 10, max: 16 },
+      good: { min: 3, avg: 7, max: 12 },
+      fair: { min: 2, avg: 4, max: 8 },
+    },
+  },
+  bags: {
+    premium: {
+      new_with_tags: { min: 80, avg: 130, max: 200 },
+      new_without_tags: { min: 65, avg: 110, max: 170 },
+      excellent: { min: 50, avg: 85, max: 140 },
+      good: { min: 35, avg: 60, max: 100 },
+      fair: { min: 18, avg: 35, max: 60 },
+    },
+    standard: {
+      new_with_tags: { min: 50, avg: 80, max: 130 },
+      new_without_tags: { min: 40, avg: 65, max: 105 },
+      excellent: { min: 32, avg: 50, max: 85 },
+      good: { min: 22, avg: 35, max: 60 },
+      fair: { min: 11, avg: 20, max: 35 },
+    },
+    budget: {
+      new_with_tags: { min: 30, avg: 50, max: 80 },
+      new_without_tags: { min: 24, avg: 40, max: 65 },
+      excellent: { min: 18, avg: 32, max: 52 },
+      good: { min: 12, avg: 22, max: 38 },
+      fair: { min: 6, avg: 12, max: 22 },
+    },
+  },
+}
+
+const getPremiumBrands = () => ['Titleist', 'Callaway', 'TaylorMade', 'FootJoy', 'Nike', 'Adidas', 'Puma', 'Under Armour', 'Travis Mathew', 'Peter Millar']
+const getStandardBrands = () => ['Malbon Golf', 'Good Good']
+const getBrandTier = (brand: string): 'premium' | 'standard' | 'budget' => {
+  if (getPremiumBrands().includes(brand)) return 'premium'
+  if (getStandardBrands().includes(brand)) return 'standard'
+  return 'budget'
+}
+
+const getSuggestions = (category: string, brand: string, condition: string) => {
+  if (!category || !brand || !condition) return null
+  
+  const tier = getBrandTier(brand)
+  const categoryKey = category as keyof typeof PRICE_SUGGESTIONS
+  
+  if (!PRICE_SUGGESTIONS[categoryKey]) return null
+  if (!PRICE_SUGGESTIONS[categoryKey][tier]) return null
+  if (!PRICE_SUGGESTIONS[categoryKey][tier][condition]) return null
+  
+  return PRICE_SUGGESTIONS[categoryKey][tier][condition]
+}
+
 export default function SellPage() {
   const router = useRouter()
   const { profile, isAuthenticated } = useAuth()
@@ -696,6 +882,48 @@ export default function SellPage() {
                   </li>
                 </ul>
               </div>
+
+              {/* Smart Pricing Suggestions */}
+              {formData.category && formData.brand && formData.condition && getSuggestions(formData.category, formData.brand, formData.condition) && (
+                <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl p-6 border border-purple-200">
+                  <h2 className="font-bold text-gray-900 mb-1">💡 Smart Pricing</h2>
+                  <p className="text-xs text-gray-600 mb-4">Based on {formData.brand} {formData.category} in {formData.condition} condition</p>
+                  <div className="space-y-3">
+                    {(() => {
+                      const suggestions = getSuggestions(formData.category, formData.brand, formData.condition)
+                      if (!suggestions) return null
+                      
+                      return (
+                        <>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-700">Recommended Range</span>
+                            <span className="font-bold text-purple-700">${suggestions.min} - ${suggestions.max}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-700">Average Price</span>
+                            <span className="font-bold text-blue-700">${suggestions.avg}</span>
+                          </div>
+                          {formData.price && (
+                            <div className="pt-2 border-t">
+                              <div className="text-xs mb-2">
+                                {parseFloat(formData.price) < suggestions.min && (
+                                  <span className="text-orange-600">💪 Consider pricing higher - below market average</span>
+                                )}
+                                {parseFloat(formData.price) >= suggestions.min && parseFloat(formData.price) <= suggestions.max && (
+                                  <span className="text-green-600">✓ Great pricing - in the competitive range</span>
+                                )}
+                                {parseFloat(formData.price) > suggestions.max && (
+                                  <span className="text-amber-600">📈 Premium pricing - above average, ensure excellent condition</span>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )
+                    })()}
+                  </div>
+                </div>
+              )}
 
               {/* Fees */}
               {formData.price && (
