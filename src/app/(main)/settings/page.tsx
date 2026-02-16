@@ -103,11 +103,20 @@ function ToggleSwitch({ enabled, onChange }: { enabled: boolean; onChange: (valu
 }
 
 export default function SettingsPage() {
-  const { profile, isLoading, user, addresses, fetchAddresses, notification_preferences, updateNotificationPreferences, privacy_settings, updatePrivacySettings } = useAuth()
+  const { profile, isLoading, user, addresses, fetchAddresses, notification_preferences, updateNotificationPreferences, privacy_settings, updatePrivacySettings, updateProfile } = useAuth()
   const [settings, setSettings] = useState(mockSettings)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
-  const [sizes, setSizes] = useState(mockSettings.sizes)
+  const [sizes, setSizes] = useState({
+    tops: profile?.size_tops || '',
+    bottoms_waist: profile?.size_bottoms_waist || '',
+    bottoms_length: profile?.size_bottoms_length || '',
+    footwear: profile?.size_footwear || '',
+    headwear: profile?.size_headwear || '',
+    gloves: profile?.size_gloves || '',
+    gender_preference: profile?.gender_preference || 'mens',
+  })
+  const [sizesSaving, setSizesSaving] = useState(false)
   const [seller, setSeller] = useState(mockSettings.seller)
 
   // Account section state - initialized from profile
@@ -139,6 +148,54 @@ export default function SettingsPage() {
       fetchAddresses()
     }
   }, [user, fetchAddresses])
+
+  // Update sizes when profile loads
+  useEffect(() => {
+    if (profile) {
+      setSizes({
+        tops: profile.size_tops || '',
+        bottoms_waist: profile.size_bottoms_waist || '',
+        bottoms_length: profile.size_bottoms_length || '',
+        footwear: profile.size_footwear || '',
+        headwear: profile.size_headwear || '',
+        gloves: profile.size_gloves || '',
+        gender_preference: profile.gender_preference || 'mens',
+      })
+    }
+  }, [profile])
+
+  // Handle saving sizes
+  const handleSaveSizes = async () => {
+    setSizesSaving(true)
+    try {
+      const { error } = await updateProfile({
+        size_tops: sizes.tops || null,
+        size_bottoms_waist: sizes.bottoms_waist || null,
+        size_bottoms_length: sizes.bottoms_length || null,
+        size_footwear: sizes.footwear || null,
+        size_headwear: sizes.headwear || null,
+        size_gloves: sizes.gloves || null,
+        gender_preference: (sizes.gender_preference as any) || null,
+      })
+      if (error) {
+        console.error('Error saving sizes:', error)
+      } else {
+        // Show success feedback
+        const saveButton = document.querySelector('[data-save-sizes]') as HTMLButtonElement
+        if (saveButton) {
+          const originalText = saveButton.textContent
+          saveButton.textContent = '✓ Saved!'
+          setTimeout(() => {
+            saveButton.textContent = originalText
+          }, 2000)
+        }
+      }
+    } catch (err) {
+      console.error('Error saving sizes:', err)
+    } finally {
+      setSizesSaving(false)
+    }
+  }
 
   // Show loading state
   if (isLoading) {
@@ -657,6 +714,26 @@ export default function SettingsPage() {
           <p className="text-sm text-gray-600 mb-6">Save your sizes for faster shopping and better recommendations</p>
 
           <div className="space-y-6 mb-8">
+            {/* Gender Preference */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-3">Gender Preference</label>
+              <div className="flex gap-4">
+                {['mens', 'womens', 'all'].map((option) => (
+                  <label key={option} className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="gender_preference"
+                      value={option}
+                      checked={sizes.gender_preference === option}
+                      onChange={(e) => setSizes({ ...sizes, gender_preference: e.target.value as any })}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm text-gray-700 capitalize">{option === 'all' ? 'All Genders' : option}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
             {/* Tops */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Tops</label>
@@ -665,7 +742,8 @@ export default function SettingsPage() {
                 onChange={(e) => setSizes({ ...sizes, tops: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5f6651]"
               >
-                {['XS', 'S', 'M', 'L', 'XL', 'XXL'].map((size) => (
+                <option value="">Select size...</option>
+                {['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'].map((size) => (
                   <option key={size} value={size}>
                     {size}
                   </option>
@@ -681,6 +759,7 @@ export default function SettingsPage() {
                 onChange={(e) => setSizes({ ...sizes, bottoms_waist: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5f6651]"
               >
+                <option value="">Select size...</option>
                 {['28', '29', '30', '31', '32', '33', '34', '36', '38', '40', '42'].map((size) => (
                   <option key={size} value={size}>
                     {size}
@@ -697,6 +776,7 @@ export default function SettingsPage() {
                 onChange={(e) => setSizes({ ...sizes, bottoms_length: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5f6651]"
               >
+                <option value="">Select size...</option>
                 {['28', '29', '30', '31', '32', '33', '34', '36'].map((size) => (
                   <option key={size} value={size}>
                     {size}
@@ -705,15 +785,16 @@ export default function SettingsPage() {
               </select>
             </div>
 
-            {/* Shoes */}
+            {/* Footwear */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Shoes</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Footwear</label>
               <select
-                value={sizes.shoes}
-                onChange={(e) => setSizes({ ...sizes, shoes: e.target.value })}
+                value={sizes.footwear}
+                onChange={(e) => setSizes({ ...sizes, footwear: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5f6651]"
               >
-                {['7', '7.5', '8', '8.5', '9', '9.5', '10', '10.5', '11', '11.5', '12', '13', '14'].map((size) => (
+                <option value="">Select size...</option>
+                {['6', '6.5', '7', '7.5', '8', '8.5', '9', '9.5', '10', '10.5', '11', '11.5', '12', '13', '14'].map((size) => (
                   <option key={size} value={size}>
                     {size}
                   </option>
@@ -721,14 +802,15 @@ export default function SettingsPage() {
               </select>
             </div>
 
-            {/* Hats */}
+            {/* Headwear */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Hats</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Headwear</label>
               <select
-                value={sizes.hats}
-                onChange={(e) => setSizes({ ...sizes, hats: e.target.value })}
+                value={sizes.headwear}
+                onChange={(e) => setSizes({ ...sizes, headwear: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5f6651]"
               >
+                <option value="">Select size...</option>
                 <option value="one_size">One Size / Adjustable</option>
                 <option value="small">Small</option>
                 <option value="medium">Medium</option>
@@ -745,7 +827,8 @@ export default function SettingsPage() {
                 onChange={(e) => setSizes({ ...sizes, gloves: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5f6651]"
               >
-                {['S', 'M', 'M/L', 'L', 'XL'].map((size) => (
+                <option value="">Select size...</option>
+                {['XS', 'S', 'M', 'M/L', 'L', 'XL'].map((size) => (
                   <option key={size} value={size}>
                     {size}
                   </option>
@@ -754,8 +837,13 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <button className="w-full bg-[#5f6651] text-white py-2 rounded-lg font-medium hover:opacity-90">
-            Save Sizes
+          <button
+            onClick={handleSaveSizes}
+            disabled={sizesSaving}
+            data-save-sizes
+            className="w-full bg-[#5f6651] text-white py-2 rounded-lg font-medium hover:opacity-90 disabled:opacity-50"
+          >
+            {sizesSaving ? 'Saving...' : 'Save Sizes'}
           </button>
         </section>
 

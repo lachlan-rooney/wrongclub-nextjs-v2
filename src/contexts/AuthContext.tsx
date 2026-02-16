@@ -26,6 +26,15 @@ interface Profile {
   prestige_buyer: number   // 0, 1, 2, 3+
   phone_verified: boolean
   
+  // Size preferences
+  size_tops: string | null
+  size_bottoms_waist: string | null
+  size_bottoms_length: string | null
+  size_footwear: string | null
+  size_headwear: string | null
+  size_gloves: string | null
+  gender_preference: 'mens' | 'womens' | 'all' | null
+  
   created_at: string
 }
 
