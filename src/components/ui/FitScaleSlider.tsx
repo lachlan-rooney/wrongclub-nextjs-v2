@@ -11,11 +11,11 @@ interface FitScaleSliderProps {
 }
 
 const FIT_SCALE_LABELS: Record<string, string> = {
-  '-2': 'Runs Large (-2)',
-  '-1': 'Slightly Large (-1)',
+  '-2': 'Runs Small (-2)',
+  '-1': 'Slightly Small (-1)',
   '0': 'True to Size',
-  '1': 'Slightly Small (+1)',
-  '2': 'Runs Small (+2)',
+  '1': 'Slightly Large (+1)',
+  '2': 'Runs Large (+2)',
 }
 
 const FIT_SCALE_EMOJIS: Record<string, string> = {
@@ -76,9 +76,9 @@ export function FitScaleSlider({
         {/* Scale labels */}
         {showLabels && (
           <div className="flex justify-between text-xs text-gray-600 mt-3 px-1">
-            <span>Runs Large</span>
-            <span>True Size</span>
             <span>Runs Small</span>
+            <span>True Size</span>
+            <span>Runs Large</span>
           </div>
         )}
 
