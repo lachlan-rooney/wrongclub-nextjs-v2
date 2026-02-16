@@ -1,882 +1,681 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { Heart, Share2, X, ChevronLeft, ChevronRight, MessageCircle, ArrowLeft, Shield, Truck, Check } from 'lucide-react'
-import { useParams } from 'next/navigation'
-import { ImageCarousel } from '@/components/ImageCarousel'
-import { BuyBar } from '@/components/BuyBar'
-import { FitBadge } from '@/components'
+import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import { createClient } from '@/lib/supabase-client'
+import { FitBadge } from '@/components'
+import { 
+  Heart, Share2, MessageCircle, ShoppingBag, 
+  ChevronLeft, ChevronRight, Shield, Truck, AlertTriangle 
+} from 'lucide-react'
+import { getFitRecommendation } from '@/lib/sizing'
 
-interface ListingData {
+interface ListingWithRelations {
   id: string
-  img: string
-  brand: string
+  seller_id: string
   title: string
-  price: number
-  description: string
-  size: string
-  condition: string
+  description: string | null
+  brand: string | null
   category: string
   gender: string
-  color: string
-  material?: string
-  allowOffers: boolean
-  fit_scale?: number
-  is_one_size?: boolean
-  seller: {
-    name: string
+  size: string
+  color: string | null
+  condition: string
+  price_cents: number
+  shipping_price_cents: number
+  status: string
+  fit_scale: number
+  is_one_size: boolean
+  views: number
+  saves: number
+  created_at: string
+  updated_at: string
+  seller?: {
+    id: string
     username: string
-    rating: number
-    sales: number
-    tier: 'birdie' | 'eagle' | 'albatross' | 'hole_in_one'
+    display_name: string
+    avatar_url: string | null
+    tier_seller: string
+    handicap_seller: number
   }
+  images?: Array<{
+    id: string
+    url: string
+    display_order: number
+  }>
 }
 
-const tierLabels = {
-  birdie: 'Birdie',
-  eagle: 'Eagle',
-  albatross: 'Albatross',
-  hole_in_one: 'Official',
+interface FitRecommendationType {
+  type: 'perfect' | 'close' | 'too_small' | 'too_large' | null
+  message: string
+  icon: string
 }
 
-const mockListings: ListingData[] = [
-  {
-    id: '1',
-    img: '/images/walkers-varsity-jacket.png',
-    brand: 'Walkers x Wrong Club',
-    title: 'Varsity Jacket',
-    price: 24500,
-    description: 'Premium varsity jacket from the Walkers x Wrong Club collab. Perfect condition, minimal wear.',
-    size: 'L',
-    condition: 'Like New',
-    category: 'tops',
-    gender: 'mens',
-    color: 'Navy/Cream',
-    fit_scale: 0,
-    is_one_size: false,
-    allowOffers: false,
-    seller: {
-      name: 'Wrong Club Official',
-      username: 'wrongclub',
-      rating: 5.0,
-      sales: 1250,
-      tier: 'hole_in_one',
-    },
-  },
-  {
-    id: '2',
-    img: '/images/footjoy.png',
-    brand: 'FootJoy',
-    title: 'DryJoys Premiere Field',
-    price: 16500,
-    description: 'Professional-grade waterproof golf shoes. Worn a few times, excellent condition.',
-    size: '10',
-    condition: 'Good',
-    category: 'footwear',
-    gender: 'mens',
-    color: 'White/Navy',
-    fit_scale: -1,
-    is_one_size: false,
-    allowOffers: true,
-    seller: {
-      name: 'Sarah M.',
-      username: 'sarahm',
-      rating: 4.9,
-      sales: 47,
-      tier: 'albatross',
-    },
-  },
-  {
-    id: '3',
-    img: '/images/good-hat.png',
-    brand: 'Good Good',
-    title: 'Big Shot Rope Hat',
-    price: 3800,
-    description: 'Iconic Good Good rope cap from the YouTube crew. New with tags.',
-    size: 'One Size',
-    condition: 'New with Tags',
-    category: 'headwear',
-    gender: 'mens',
-    color: 'Navy',
-    fit_scale: 0,
-    is_one_size: true,
-    allowOffers: true,
-    seller: {
-      name: 'Jack T.',
-      username: 'jackt',
-      rating: 4.7,
-      sales: 12,
-      tier: 'eagle',
-    },
-  },
-  {
-    id: '4',
-    img: '/images/shorts.png',
-    brand: 'Aguila',
-    title: 'Performance Shorts',
-    price: 8800,
-    description: 'Lightweight performance shorts perfect for warm rounds. Clean condition.',
-    size: 'M',
-    condition: 'Good',
-    category: 'bottoms',
-    gender: 'mens',
-    color: 'Black',
-    allowOffers: true,
-    seller: {
-      name: 'Mike P.',
-      username: 'mikep',
-      rating: 4.8,
-      sales: 23,
-      tier: 'eagle',
-    },
-  },
-  {
-    id: '5',
-    img: '/images/yeti-cooler.png',
-    brand: 'YETI x Wrong Club',
-    title: 'Roadie 24 Cooler',
-    price: 27500,
-    description: 'Rugged YETI cooler with Wrong Club branding. Limited edition release.',
-    size: 'One Size',
-    condition: 'New with Tags',
-    category: 'bags',
-    gender: 'mens',
-    color: 'White',
-    allowOffers: false,
-    seller: {
-      name: 'Wrong Club Official',
-      username: 'wrongclub',
-      rating: 5.0,
-      sales: 1250,
-      tier: 'hole_in_one',
-    },
-  },
-  {
-    id: '6',
-    img: '/images/yeti-bottle.png',
-    brand: 'YETI x Wrong Club',
-    title: 'Rambler 26oz Bottle',
-    price: 4500,
-    description: 'Insulated water bottle from the Wrong Club collab. Keeps drinks cold for 24 hours.',
-    size: 'One Size',
-    condition: 'New with Tags',
-    category: 'accessories',
-    gender: 'mens',
-    color: 'Navy',
-    allowOffers: false,
-    seller: {
-      name: 'Wrong Club Official',
-      username: 'wrongclub',
-      rating: 5.0,
-      sales: 1250,
-      tier: 'hole_in_one',
-    },
-  },
-  {
-    id: '7',
-    img: '/images/walkers-polo.png',
-    brand: 'Walkers x Wrong Club',
-    title: 'Shortbread Polo',
-    price: 9500,
-    description: 'Classic polo with Walkers branding. Perfect for casual rounds.',
-    size: 'L',
-    condition: 'Good',
-    category: 'tops',
-    gender: 'mens',
-    color: 'Cream',
-    allowOffers: true,
-    seller: {
-      name: 'Wrong Club Official',
-      username: 'wrongclub',
-      rating: 5.0,
-      sales: 1250,
-      tier: 'hole_in_one',
-    },
-  },
-  {
-    id: '8',
-    img: '/images/yeti-bucket-hat.png',
-    brand: 'YETI x Wrong Club',
-    title: 'Toile Bucket Hat',
-    price: 4800,
-    description: 'Stylish bucket hat from YETI collaboration. Perfect for sun protection.',
-    size: 'One Size',
-    condition: 'Like New',
-    category: 'headwear',
-    gender: 'mens',
-    color: 'Cream/Navy',
-    allowOffers: false,
-    seller: {
-      name: 'Wrong Club Official',
-      username: 'wrongclub',
-      rating: 5.0,
-      sales: 1250,
-      tier: 'hole_in_one',
-    },
-  },
-  {
-    id: '9',
-    img: '/images/malbon.png',
-    brand: 'Malbon Golf',
-    title: 'Script Bucket Hat',
-    price: 5800,
-    description: 'Malbon Golf bucket hat with embroidered script. Excellent condition.',
-    size: 'One Size',
-    condition: 'Like New',
-    category: 'headwear',
-    gender: 'womens',
-    color: 'Navy',
-    allowOffers: true,
-    seller: {
-      name: 'Rachel L.',
-      username: 'rachell',
-      rating: 4.9,
-      sales: 52,
-      tier: 'albatross',
-    },
-  },
-  {
-    id: '10',
-    img: '/images/metalwood.png',
-    brand: 'Metalwood Studio',
-    title: 'Camo Sleeve Crewneck',
-    price: 14500,
-    description: 'Premium crewneck with camo sleeve detail. A versatile piece for any golfer.',
-    size: 'L',
-    condition: 'Like New',
-    category: 'tops',
-    gender: 'mens',
-    color: 'Camo',
-    allowOffers: true,
-    seller: {
-      name: 'Chris D.',
-      username: 'chrisd',
-      rating: 4.7,
-      sales: 29,
-      tier: 'eagle',
-    },
-  },
-  {
-    id: '11',
-    img: '/images/red-snapper-tees.png',
-    brand: 'Red Snapper',
-    title: 'Golf Tees - Sardine Tin',
-    price: 2500,
-    description: 'Unique golf tee set in a sardine tin. Perfect gift for collectors.',
-    size: 'One Size',
-    condition: 'New with Tags',
-    category: 'accessories',
-    gender: 'mens',
-    color: 'Mixed',
-    allowOffers: true,
-    seller: {
-      name: 'Tom B.',
-      username: 'tomb',
-      rating: 4.8,
-      sales: 19,
-      tier: 'eagle',
-    },
-  },
-  {
-    id: '12',
-    img: '/images/walkers-rain-jacket.png',
-    brand: 'Walkers x Wrong Club',
-    title: 'Rain Jacket',
-    price: 29500,
-    description: 'Premium waterproof rain jacket. Lightweight and packable for any round.',
-    size: 'L',
-    condition: 'New with Tags',
-    category: 'tops',
-    gender: 'mens',
-    color: 'Navy',
-    allowOffers: false,
-    seller: {
-      name: 'Wrong Club Official',
-      username: 'wrongclub',
-      rating: 5.0,
-      sales: 1250,
-      tier: 'hole_in_one',
-    },
-  },
-  {
-    id: '13',
-    img: '/images/walkers-socks.png',
-    brand: 'Walkers x Wrong Club',
-    title: 'Merino Wool Shortbread Socks',
-    price: 3000,
-    description: 'Premium merino wool socks with Walkers branding. Comfortable for long rounds.',
-    size: 'One Size',
-    condition: 'New with Tags',
-    category: 'accessories',
-    gender: 'mens',
-    color: 'Navy',
-    allowOffers: false,
-    seller: {
-      name: 'Wrong Club Official',
-      username: 'wrongclub',
-      rating: 5.0,
-      sales: 1250,
-      tier: 'hole_in_one',
-    },
-  },
-  {
-    id: '14',
-    img: '/images/walkers-golf-balls.png',
-    brand: 'Walkers x Wrong Club',
-    title: 'Shortbread Golf Balls (3-Pack)',
-    price: 1500,
-    description: 'Limited edition Shortbread-themed golf balls. Collectors item.',
-    size: 'One Size',
-    condition: 'New with Tags',
-    category: 'accessories',
-    gender: 'mens',
-    color: 'White',
-    allowOffers: true,
-    seller: {
-      name: 'Wrong Club Official',
-      username: 'wrongclub',
-      rating: 5.0,
-      sales: 1250,
-      tier: 'hole_in_one',
-    },
-  },
-  {
-    id: '15',
-    img: '/images/walkers-trousers.png',
-    brand: 'Walkers x Wrong Club',
-    title: 'Golf Trousers - Cream',
-    price: 7500,
-    description: 'Classic cream golf trousers from Walkers collab. Perfect for tournament play.',
-    size: '34',
-    condition: 'Good',
-    category: 'bottoms',
-    gender: 'mens',
-    color: 'Cream',
-    allowOffers: true,
-    seller: {
-      name: 'Wrong Club Official',
-      username: 'wrongclub',
-      rating: 5.0,
-      sales: 1250,
-      tier: 'hole_in_one',
-    },
-  },
-  {
-    id: '16',
-    img: '/images/fairway-fingers.png',
-    brand: 'Walkers x Wrong Club',
-    title: 'Fairway Fingers Shortbread',
-    price: 500,
-    description: 'Delicious Shortbread treats. A fun collaboration snack.',
-    size: 'One Size',
-    condition: 'New',
-    category: 'accessories',
-    gender: 'mens',
-    color: 'Golden',
-    allowOffers: false,
-    seller: {
-      name: 'Wrong Club Official',
-      username: 'wrongclub',
-      rating: 5.0,
-      sales: 1250,
-      tier: 'hole_in_one',
-    },
-  },
-  {
-    id: '17',
-    img: '/images/vinamilk-tee.png',
-    brand: 'Vinamilk x Wrong Club',
-    title: 'Vinamilk x Wrong Club Tee',
-    price: 8500,
-    description: 'Exclusive t-shirt from the Vinamilk collaboration. Limited quantities.',
-    size: 'L',
-    condition: 'New with Tags',
-    category: 'tops',
-    gender: 'mens',
-    color: 'White',
-    allowOffers: true,
-    seller: {
-      name: 'Wrong Club Official',
-      username: 'wrongclub',
-      rating: 5.0,
-      sales: 1250,
-      tier: 'hole_in_one',
-    },
-  },
-  {
-    id: '18',
-    img: '/images/vinamilk-longsleeve.png',
-    brand: 'Vinamilk x Wrong Club',
-    title: 'Vinamilk x Wrong Club Long Sleeve',
-    price: 9500,
-    description: 'Premium long sleeve from Vinamilk partnership. Comfortable everyday wear.',
-    size: 'L',
-    condition: 'New with Tags',
-    category: 'tops',
-    gender: 'mens',
-    color: 'Navy',
-    allowOffers: true,
-    seller: {
-      name: 'Wrong Club Official',
-      username: 'wrongclub',
-      rating: 5.0,
-      sales: 1250,
-      tier: 'hole_in_one',
-    },
-  },
-  {
-    id: '19',
-    img: '/images/vinamilk-trousers.png',
-    brand: 'Vinamilk x Wrong Club',
-    title: 'Vinamilk x Wrong Club Trousers',
-    price: 12000,
-    description: 'Exclusive trousers from the Vinamilk collection. Limited edition.',
-    size: '34',
-    condition: 'New with Tags',
-    category: 'bottoms',
-    gender: 'mens',
-    color: 'Navy',
-    allowOffers: false,
-    seller: {
-      name: 'Wrong Club Official',
-      username: 'wrongclub',
-      rating: 5.0,
-      sales: 1250,
-      tier: 'hole_in_one',
-    },
-  },
-  {
-    id: '20',
-    img: '/images/vinamilk-gilet.png',
-    brand: 'Vinamilk x Wrong Club',
-    title: 'The Milkman Gilet',
-    price: 11000,
-    description: 'Lightweight gilet from the Vinamilk collab. Perfect layering piece.',
-    size: 'L',
-    condition: 'New with Tags',
-    category: 'tops',
-    gender: 'mens',
-    color: 'White',
-    allowOffers: false,
-    seller: {
-      name: 'Wrong Club Official',
-      username: 'wrongclub',
-      rating: 5.0,
-      sales: 1250,
-      tier: 'hole_in_one',
-    },
-  },
-  {
-    id: '21',
-    img: '/images/vinamilk-candle.png',
-    brand: 'Vinamilk x Wrong Club',
-    title: 'The Vanillamilk Candle',
-    price: 1000,
-    description: 'Scented candle from the Vinamilk partnership. A unique collectible.',
-    size: 'One Size',
-    condition: 'New with Tags',
-    category: 'accessories',
-    gender: 'mens',
-    color: 'Cream',
-    allowOffers: true,
-    seller: {
-      name: 'Wrong Club Official',
-      username: 'wrongclub',
-      rating: 5.0,
-      sales: 1250,
-      tier: 'hole_in_one',
-    },
-  },
-]
-
-function formatPrice(cents: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(cents / 100)
-}
-
-function GolfBallRating({ rating }: { rating: number }) {
-  const balls = Math.floor(rating)
-  return (
-    <div className="flex items-center gap-0.5">
-      {Array(5)
-        .fill(0)
-        .map((_, i) => (
-          <span key={i} className="text-sm">
-            {i < balls ? '⛳' : '⚪'}
-          </span>
-        ))}
-      <span className="text-sm font-medium text-gray-700 ml-2">{rating}</span>
-    </div>
-  )
-}
-
-export default function ListingPage() {
+export default function ListingDetailPage() {
+  const { id } = useParams()
   const router = useRouter()
-  const params = useParams()
-  const id = params.id as string
-  const [saved, setSaved] = useState(false)
-  const [isMounted, setIsMounted] = useState(false)
-  const [scrollY, setScrollY] = useState(0)
+  const { profile, isAuthenticated } = useAuth()
 
-  const listing = mockListings.find((l) => l.id === id) || mockListings[0]
-  const images = [listing.img, listing.img, listing.img, listing.img, listing.img]
-  const similarListings = mockListings.filter((l) => l.category === listing.category && l.id !== listing.id)
-  const isCollab = listing.brand.includes(' x ')
+  const [listing, setListing] = useState<ListingWithRelations | null>(null)
+  const [images, setImages] = useState<Array<{ id: string; url: string; display_order: number }>>([])
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaved, setIsSaved] = useState(false)
+  const [showSizeWarning, setShowSizeWarning] = useState(false)
 
+  // Fetch listing data
   useEffect(() => {
-    setIsMounted(true)
-    const handleScroll = () => setScrollY(window.scrollY)
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
+    const fetchListing = async () => {
+      if (!id) return
+
+      const supabase = createClient()
+
+      // Fetch listing with seller and images
+      const { data, error } = await supabase
+        .from('listings')
+        .select(
+          `
+          *,
+          seller:profiles!seller_id(id, username, display_name, avatar_url, tier_seller, handicap_seller),
+          images:listing_images(id, url, display_order)
+        `
+        )
+        .eq('id', id as string)
+        .single()
+
+      if (error || !data) {
+        console.error('Error fetching listing:', error)
+        setIsLoading(false)
+        return
+      }
+
+      setListing(data)
+      const sortedImages = (data.images || []).sort(
+        (a: any, b: any) => a.display_order - b.display_order
+      )
+      setImages(sortedImages)
+
+      // Check if user has saved this listing
+      if (profile) {
+        const { data: favorite } = await supabase
+          .from('favorites')
+          .select('id')
+          .eq('user_id', profile.id)
+          .eq('listing_id', id as string)
+          .maybeSingle()
+
+        setIsSaved(!!favorite)
+      }
+
+      // Increment view count
+      await supabase
+        .from('listings')
+        .update({ views: data.views + 1 })
+        .eq('id', id as string)
+
+      setIsLoading(false)
+    }
+
+    if (id) {
+      fetchListing()
+    }
+  }, [id, profile])
+
+  // Get user's relevant size for this category
+  const getUserSizeForCategory = (): string | null => {
+    if (!profile || !listing) return null
+
+    switch (listing.category) {
+      case 'tops':
+      case 'outerwear':
+        return profile.size_tops || null
+      case 'bottoms':
+        return profile.size_bottoms_waist || null
+      case 'footwear':
+        return profile.size_footwear || null
+      case 'headwear':
+        return profile.size_headwear || null
+      default:
+        return null
+    }
+  }
+
+  // Get fit recommendation
+  const getFitAdvice = (): FitRecommendationType => {
+    if (!listing || listing.is_one_size) {
+      return { type: null, message: '', icon: '' }
+    }
+
+    const userSize = getUserSizeForCategory()
+    if (!userSize) {
+      return { type: null, message: '', icon: '' }
+    }
+
+    const recommendation = getFitRecommendation(
+      userSize,
+      listing.size,
+      listing.fit_scale,
+      listing.category as any
+    )
+
+    if (recommendation.includes('perfectly')) {
+      return { type: 'perfect', message: recommendation, icon: '✅' }
+    } else if (recommendation.includes('snug') || recommendation.includes('loose')) {
+      return { type: 'close', message: recommendation, icon: '👍' }
+    } else if (recommendation.includes('too small')) {
+      return { type: 'too_small', message: recommendation, icon: '⚠️' }
+    } else if (recommendation.includes('too large')) {
+      return { type: 'too_large', message: recommendation, icon: '⚠️' }
+    }
+
+    return { type: 'close', message: recommendation, icon: '👍' }
+  }
+
+  const fitAdvice = getFitAdvice()
+
+  // Handle save/unsave
+  const handleToggleSave = async () => {
+    if (!isAuthenticated) {
+      router.push('/login')
+      return
+    }
+
+    const supabase = createClient()
+
+    if (isSaved) {
+      await supabase
+        .from('favorites')
+        .delete()
+        .eq('user_id', profile!.id)
+        .eq('listing_id', id as string)
+      setIsSaved(false)
+    } else {
+      await supabase.from('favorites').insert({ user_id: profile!.id, listing_id: id as string })
+      setIsSaved(true)
+    }
+  }
+
+  // Handle add to cart
+  const handleAddToCart = async () => {
+    if (!isAuthenticated) {
+      router.push('/login')
+      return
+    }
+
+    // Check if size might not fit and warn user
+    if (fitAdvice.type === 'too_small' || fitAdvice.type === 'too_large') {
+      setShowSizeWarning(true)
+      return
+    }
+
+    await addToCart()
+  }
+
+  const addToCart = async () => {
+    const supabase = createClient()
+
+    // Check if already in cart
+    const { data: existing } = await supabase
+      .from('cart_items')
+      .select('id')
+      .eq('user_id', profile!.id)
+      .eq('listing_id', id as string)
+      .maybeSingle()
+
+    if (!existing) {
+      await supabase
+        .from('cart_items')
+        .insert({ user_id: profile!.id, listing_id: id as string })
+    }
+
+    setShowSizeWarning(false)
+    router.push('/cart')
+  }
+
+  // Handle buy now
+  const handleBuyNow = async () => {
+    if (!isAuthenticated) {
+      router.push('/login')
+      return
+    }
+
+    await addToCart()
+    router.push('/checkout')
+  }
+
+  // Handle message seller
+  const handleMessageSeller = async () => {
+    if (!isAuthenticated) {
+      router.push('/login')
+      return
+    }
+
+    if (!listing?.seller) return
+
+    const supabase = createClient()
+
+    // Check for existing conversation
+    const { data: existing } = await supabase
+      .from('conversations')
+      .select('id')
+      .or(
+        `and(user1_id.eq.${profile!.id},user2_id.eq.${listing.seller.id}),and(user1_id.eq.${listing.seller.id},user2_id.eq.${profile!.id})`
+      )
+      .maybeSingle()
+
+    if (existing) {
+      router.push(`/messages/${existing.id}`)
+    } else {
+      // Create new conversation
+      const { data: newConvo } = await supabase
+        .from('conversations')
+        .insert({
+          user1_id: profile!.id,
+          user2_id: listing.seller.id,
+          listing_id: id as string,
+        })
+        .select('id')
+        .single()
+
+      if (newConvo) {
+        router.push(`/messages/${newConvo.id}`)
+      }
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#5f6651]"></div>
+      </div>
+    )
+  }
+
+  if (!listing) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <p className="text-lg text-gray-600 mb-4">Listing not found</p>
+          <button
+            onClick={() => router.push('/browse')}
+            className="text-[#5f6651] hover:underline font-medium"
+          >
+            Browse other listings →
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  const conditionLabels: Record<string, string> = {
+    new_with_tags: 'New with Tags',
+    new_without_tags: 'New without Tags',
+    excellent: 'Excellent',
+    good: 'Good',
+    fair: 'Fair',
+  }
+
+  const getTierDisplay = (tier: string | undefined) => {
+    switch (tier) {
+      case 'hole_in_one':
+        return { emoji: '🏌️', name: 'Hole-in-One' }
+      case 'albatross':
+        return { emoji: '🦢', name: 'Albatross' }
+      case 'eagle':
+        return { emoji: '🦅', name: 'Eagle' }
+      default:
+        return { emoji: '🐦', name: 'Birdie' }
+    }
+  }
 
   return (
-    <div className="bg-white">
-      {/* Detail Nav - becomes frosted glass on scroll */}
-      <nav
-        className="sticky top-0 z-30 transition-all duration-300"
-        style={{
-          backgroundColor:
-            scrollY > 20
-              ? 'rgba(250, 249, 246, 0.95)'
-              : 'rgba(255, 255, 255, 0)',
-          backdropFilter: scrollY > 20 ? 'blur(20px)' : 'none',
-        }}
-      >
-        <div className="px-4 py-3 flex items-center justify-between">
-          {/* Back Button */}
-          <button
-            onClick={() => router.back()}
-            className="flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/90 backdrop-blur flex items-center justify-center transition-all hover:bg-white active:scale-95"
-          >
-            <ArrowLeft size={20} className="text-[var(--charcoal)]" />
-          </button>
+    <div className="min-h-screen bg-gray-50 pb-24 lg:pb-12">
+      {/* Back Button - Mobile */}
+      <div className="lg:hidden sticky top-0 z-10 bg-white border-b border-gray-100 px-4 py-3">
+        <button onClick={() => router.back()} className="flex items-center gap-2 text-gray-600">
+          <ChevronLeft className="w-5 h-5" />
+          Back
+        </button>
+      </div>
 
-          {/* Share & Heart */}
-          <div className="flex items-center gap-2">
-            <button className="flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/90 backdrop-blur flex items-center justify-center transition-all hover:bg-white active:scale-95">
-              <Share2 size={20} className="text-[var(--charcoal)]" />
-            </button>
-            <button
-              onClick={() => setSaved(!saved)}
-              className={`flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-full backdrop-blur flex items-center justify-center transition-all active:scale-95 ${
-                saved
-                  ? 'bg-[var(--brand)]'
-                  : 'bg-white/90 hover:bg-white'
-              }`}
-            >
-              <Heart
-                size={20}
-                className={saved ? 'text-white fill-current' : 'text-[var(--charcoal)]'}
-              />
-            </button>
-          </div>
-        </div>
-      </nav>
-
-      {/* MOBILE LAYOUT - only shows below md breakpoint */}
-      <div className="md:hidden pb-28">
-        {/* Image Carousel */}
-        <ImageCarousel images={images} alt={listing.title} />
-
-        {/* Product Info */}
-        <div className="px-4 sm:px-6 py-5">
-        {/* Brand + Collab Badge */}
-        <div className="flex items-center gap-2 mb-2">
-          <p className="text-xs uppercase font-medium text-[var(--brand)]" style={{ letterSpacing: '0.8px' }}>
-            {listing.brand}
-          </p>
-          {isCollab && (
-            <span className="px-2 py-1 bg-[var(--brand)] text-white text-xs font-medium rounded-full">
-              COLLAB
-            </span>
-          )}
-        </div>
-
-        {/* Title */}
-        <h1 className="text-xl font-bold text-[var(--charcoal)] mb-3 line-clamp-2">
-          {listing.title}
-        </h1>
-
-        {/* Price */}
-        <p className="text-2xl font-bold text-[var(--brand)] mb-4">
-          {formatPrice(listing.price)}
-        </p>
-
-        {/* Spec Tags */}
-        <div className="flex flex-wrap gap-2 mb-5">
-          <span className="px-3 py-1 bg-[var(--sand-light)] text-xs font-medium rounded-full text-[var(--charcoal)]">
-            {listing.category}
-          </span>
-          <span className="px-3 py-1 bg-[var(--sand-light)] text-xs font-medium rounded-full text-[var(--charcoal)]">
-            {listing.condition}
-          </span>
-          <span className="px-3 py-1 bg-[var(--sand-light)] text-xs font-medium rounded-full text-[var(--charcoal)]">
-            Size: {listing.size}
-          </span>
-        </div>
-
-        {/* Fit Information */}
-        {(listing.fit_scale !== undefined || listing.is_one_size) && (
-          <div className="mb-5 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-xs text-blue-900 font-semibold mb-2">📏 Fit Information</p>
-            <FitBadge
-              fitScale={listing.fit_scale || 0}
-              isOneSize={listing.is_one_size || false}
-              size="md"
-            />
-          </div>
-        )}
-
-        {/* Seller Card */}
-        <div className="border border-[var(--border)] rounded-lg p-4 mb-5">
-          <div className="flex items-start gap-3 mb-4">
-            <div className="w-12 h-12 bg-[var(--brand)] text-white rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0">
-              {listing.seller.name.charAt(0)}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-[var(--charcoal)]">{listing.seller.name}</p>
-              <div className="flex items-center gap-2 mt-1">
-                <div className="flex gap-0.5">
-                  {Array(Math.floor(listing.seller.rating))
-                    .fill(0)
-                    .map((_, i) => (
-                      <span key={i} className="text-xs">
-                        ⛳
-                      </span>
-                    ))}
+      <div className="max-w-6xl mx-auto px-4 py-6 lg:py-8">
+        <div className="lg:grid lg:grid-cols-2 lg:gap-12">
+          {/* IMAGE GALLERY */}
+          <div className="mb-6 lg:mb-0">
+            {/* Main Image */}
+            <div className="relative aspect-square bg-gray-100 rounded-2xl overflow-hidden mb-4">
+              {images.length > 0 ? (
+                <Image
+                  src={images[selectedImageIndex]?.url || '/images/placeholder.jpg'}
+                  alt={listing.title}
+                  fill
+                  className="object-cover"
+                  priority
+                />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center text-gray-400">
+                  No image available
                 </div>
-                <span className="text-xs text-[var(--slate)]">
-                  {listing.seller.rating}
-                </span>
-              </div>
-              <p className="text-xs text-[var(--slate)] mt-1">
-                {listing.seller.sales} sales • {tierLabels[listing.seller.tier]}
-              </p>
+              )}
+
+              {/* Image Navigation */}
+              {images.length > 1 && (
+                <>
+                  <button
+                    onClick={() => setSelectedImageIndex((i) => Math.max(0, i - 1))}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/80 rounded-full flex items-center justify-center shadow-md hover:bg-white disabled:opacity-50"
+                    disabled={selectedImageIndex === 0}
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => setSelectedImageIndex((i) => Math.min(images.length - 1, i + 1))}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/80 rounded-full flex items-center justify-center shadow-md hover:bg-white disabled:opacity-50"
+                    disabled={selectedImageIndex === images.length - 1}
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                </>
+              )}
+
+              {/* Image Counter */}
+              {images.length > 1 && (
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/50 rounded-full text-white text-sm font-medium">
+                  {selectedImageIndex + 1} / {images.length}
+                </div>
+              )}
+
+              {/* Save Button */}
+              <button
+                onClick={handleToggleSave}
+                className="absolute top-4 right-4 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-md hover:bg-gray-50"
+              >
+                <Heart
+                  className={`w-5 h-5 ${isSaved ? 'fill-red-500 text-red-500' : 'text-gray-600'}`}
+                />
+              </button>
             </div>
-          </div>
-          <button className="w-full py-2 border border-[var(--border)] text-sm font-medium rounded-lg text-[var(--charcoal)] transition-all active:scale-95 hover:bg-[var(--sand-light)]">
-            Message Seller
-          </button>
-        </div>
 
-        {/* Trust Signals - 2x2 Grid */}
-        <div className="grid grid-cols-2 gap-3 mb-6">
-          <div className="border border-[var(--border)] rounded-lg p-3 text-center">
-            <Shield size={20} className="text-[var(--brand)] mx-auto mb-1" />
-            <p className="text-xs font-medium text-[var(--charcoal)]">Buyer Protection</p>
-          </div>
-          <div className="border border-[var(--border)] rounded-lg p-3 text-center">
-            <Truck size={20} className="text-[var(--brand)] mx-auto mb-1" />
-            <p className="text-xs font-medium text-[var(--charcoal)]">Tracked Shipping</p>
-          </div>
-          <div className="border border-[var(--border)] rounded-lg p-3 text-center">
-            <Check size={20} className="text-[var(--brand)] mx-auto mb-1" />
-            <p className="text-xs font-medium text-[var(--charcoal)]">Verified Seller</p>
-          </div>
-          <div className="border border-[var(--border)] rounded-lg p-3 text-center">
-            <MessageCircle size={20} className="text-[var(--brand)] mx-auto mb-1" />
-            <p className="text-xs font-medium text-[var(--charcoal)]">Ask Questions</p>
-          </div>
-        </div>
-
-        {/* Description */}
-        <div className="mb-6">
-          <h3 className="font-medium text-[var(--charcoal)] mb-2">Description</h3>
-          <p className="text-sm text-[var(--slate)] leading-relaxed">
-            {listing.description}
-          </p>
-        </div>
-
-        {/* Details */}
-        <div className="space-y-3 mb-6">
-          <div className="flex justify-between py-2 border-b border-[var(--border)]">
-            <span className="text-xs text-[var(--slate)]">Brand</span>
-            <span className="text-xs font-medium text-[var(--charcoal)]">
-              {listing.brand}
-            </span>
-          </div>
-          <div className="flex justify-between py-2 border-b border-[var(--border)]">
-            <span className="text-xs text-[var(--slate)]">Color</span>
-            <span className="text-xs font-medium text-[var(--charcoal)]">
-              {listing.color}
-            </span>
-          </div>
-          <div className="flex justify-between py-2">
-            <span className="text-xs text-[var(--slate)]">Gender</span>
-            <span className="text-xs font-medium text-[var(--charcoal)] capitalize">
-              {listing.gender}
-            </span>
-          </div>
-        </div>
-
-        {/* Similar Items */}
-        {similarListings.length > 0 && (
-          <div>
-            <h2 className="font-medium text-[var(--charcoal)] mb-3">Similar Items</h2>
-            <div className="grid grid-cols-2 gap-3">
-              {similarListings.slice(0, 4).map((item) => (
-                <Link
-                  key={item.id}
-                  href={`/listing/${item.id}`}
-                  className="border border-[var(--border)] rounded-lg overflow-hidden active:scale-95 transition-transform"
-                >
-                  <div className="aspect-square bg-[var(--sand-light)] flex items-center justify-center">
-                    <img
-                      src={item.img}
-                      alt={item.title}
-                      className="w-full h-full object-contain p-2"
-                    />
-                  </div>
-                  <div className="p-2">
-                    <p className="text-xs text-[var(--slate)] line-clamp-1">
-                      {item.brand}
-                    </p>
-                    <p className="font-bold text-[var(--brand)] text-xs mt-1">
-                      {formatPrice(item.price)}
-                    </p>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* BuyBar - Mobile only */}
-      <div className="lg:hidden">
-        <BuyBar price={listing.price} productId={listing.id} />
-      </div>
-    </div>
-
-    {/* DESKTOP LAYOUT - only shows at md and above */}
-    <div className="hidden md:block bg-white py-8 px-6">
-      <main className="max-w-6xl mx-auto">
-        <div className="grid grid-cols-2 gap-12">
-          {/* Left: Images */}
-          <div>
-            <div className="aspect-square bg-[var(--sand-light)] rounded-2xl overflow-hidden mb-4 flex items-center justify-center">
-              <img 
-                src={listing.img} 
-                alt={listing.title}
-                className="w-full h-full object-contain p-4"
-              />
-            </div>
-            
             {/* Thumbnails */}
-            <div className="grid grid-cols-4 gap-3">
-              {images.map((img, i) => (
-                <div
-                  key={i}
-                  className="aspect-square bg-[var(--sand-light)] rounded-xl overflow-hidden cursor-pointer ring-2 ring-[var(--brand)]"
-                >
-                  <img src={img} alt="" className="w-full h-full object-contain p-2" />
-                </div>
-              ))}
-            </div>
+            {images.length > 1 && (
+              <div className="flex gap-2 overflow-x-auto pb-2">
+                {images.map((image, index) => (
+                  <button
+                    key={image.id}
+                    onClick={() => setSelectedImageIndex(index)}
+                    className={`relative w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden border-2 transition-colors ${
+                      index === selectedImageIndex ? 'border-[#5f6651]' : 'border-transparent hover:border-gray-300'
+                    }`}
+                  >
+                    <Image
+                      src={image.url}
+                      alt={`${listing.title} ${index + 1}`}
+                      fill
+                      className="object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Right: Details */}
+          {/* PRODUCT DETAILS */}
           <div>
-            {/* Brand */}
-            <p className="text-sm text-[var(--slate)] uppercase tracking-wide">{listing.brand}</p>
-            
-            {/* Title */}
-            <h1 className="text-3xl font-bold text-[var(--charcoal)] mt-2">{listing.title}</h1>
-            
+            {/* Brand & Title */}
+            <div className="mb-4">
+              {listing.brand && (
+                <p className="text-sm text-gray-500 uppercase tracking-wide mb-1">{listing.brand}</p>
+              )}
+              <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">{listing.title}</h1>
+            </div>
+
             {/* Price */}
-            <p className="text-4xl font-bold text-[var(--brand)] mt-4">{formatPrice(listing.price)}</p>
-            
-            {/* Condition & Size */}
-            <div className="flex items-center gap-4 mt-6">
-              <div className="px-4 py-2 bg-[var(--sand-light)] rounded-full">
-                <span className="text-sm font-medium">{listing.condition}</span>
+            <div className="flex items-baseline gap-3 mb-6">
+              <span className="text-3xl font-bold text-gray-900">
+                ${(listing.price_cents / 100).toFixed(2)}
+              </span>
+              {listing.shipping_price_cents === 0 ? (
+                <span className="text-green-600 font-medium">Free Shipping</span>
+              ) : (
+                <span className="text-gray-500">
+                  + ${(listing.shipping_price_cents / 100).toFixed(2)} shipping
+                </span>
+              )}
+            </div>
+
+            {/* Condition */}
+            <div className="mb-6">
+              <span
+                className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
+                  listing.condition === 'new_with_tags'
+                    ? 'bg-green-100 text-green-700'
+                    : listing.condition === 'new_without_tags'
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'bg-gray-100 text-gray-700'
+                }`}
+              >
+                {conditionLabels[listing.condition] || listing.condition}
+              </span>
+            </div>
+
+            {/* SIZE & FIT */}
+            <div className="bg-gray-50 rounded-xl p-4 mb-6">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-lg font-semibold">Size: {listing.size}</span>
+
+                  {listing.is_one_size ? (
+                    <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
+                      One Size
+                    </span>
+                  ) : (
+                    <FitBadge fitScale={listing.fit_scale} />
+                  )}
+                </div>
               </div>
-              <div className="px-4 py-2 bg-[var(--sand-light)] rounded-full">
-                <span className="text-sm font-medium">Size: {listing.size}</span>
+
+              {/* Personalized Fit Recommendation */}
+              {isAuthenticated && fitAdvice.type && !listing.is_one_size && (
+                <div
+                  className={`p-3 rounded-lg ${
+                    fitAdvice.type === 'perfect'
+                      ? 'bg-green-50 border border-green-200'
+                      : fitAdvice.type === 'close'
+                        ? 'bg-yellow-50 border border-yellow-200'
+                        : 'bg-red-50 border border-red-200'
+                  }`}
+                >
+                  <p
+                    className={`text-sm font-medium ${
+                      fitAdvice.type === 'perfect'
+                        ? 'text-green-700'
+                        : fitAdvice.type === 'close'
+                          ? 'text-yellow-700'
+                          : 'text-red-700'
+                    }`}
+                  >
+                    {fitAdvice.icon} {fitAdvice.message}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Based on your saved size ({getUserSizeForCategory()}) and seller's fit rating
+                  </p>
+                </div>
+              )}
+
+              {/* Prompt to save sizes */}
+              {isAuthenticated && !getUserSizeForCategory() && !listing.is_one_size && (
+                <Link
+                  href="/settings"
+                  className="block p-3 bg-[#5f6651]/5 rounded-lg text-sm text-[#5f6651] hover:bg-[#5f6651]/10 transition-colors"
+                >
+                  💡 Save your sizes in Settings to get personalized fit recommendations
+                </Link>
+              )}
+            </div>
+
+            {/* Details Grid */}
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className="bg-gray-50 rounded-lg p-3">
+                <p className="text-xs text-gray-500 mb-1">Category</p>
+                <p className="font-medium capitalize">{listing.category}</p>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-3">
+                <p className="text-xs text-gray-500 mb-1">Gender</p>
+                <p className="font-medium capitalize">{listing.gender}</p>
+              </div>
+              {listing.color && (
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-xs text-gray-500 mb-1">Color</p>
+                  <p className="font-medium">{listing.color}</p>
+                </div>
+              )}
+              <div className="bg-gray-50 rounded-lg p-3">
+                <p className="text-xs text-gray-500 mb-1">Views</p>
+                <p className="font-medium">{listing.views}</p>
               </div>
             </div>
 
             {/* Description */}
-            <div className="mt-8">
-              <h3 className="font-semibold text-[var(--charcoal)] mb-2">Description</h3>
-              <p className="text-[var(--slate)] leading-relaxed">{listing.description}</p>
-            </div>
+            {listing.description && (
+              <div className="mb-6">
+                <h3 className="font-semibold mb-2">Description</h3>
+                <p className="text-gray-600 whitespace-pre-wrap">{listing.description}</p>
+              </div>
+            )}
 
-            {/* Seller info */}
-            <div className="mt-8 p-4 bg-[var(--sand-light)] rounded-xl">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-[var(--brand)] text-white rounded-full flex items-center justify-center font-bold text-lg">
-                    {listing.seller.name.charAt(0)}
+            {/* SELLER INFO */}
+            {listing.seller && (
+              <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6">
+                <Link
+                  href={`/profile/${listing.seller.username}`}
+                  className="flex items-center gap-4 mb-4"
+                >
+                  {/* Seller Avatar */}
+                  <div className="w-14 h-14 bg-[#5f6651] rounded-full flex items-center justify-center text-white font-bold text-xl flex-shrink-0">
+                    {listing.seller.avatar_url ? (
+                      <Image
+                        src={listing.seller.avatar_url}
+                        alt={listing.seller.display_name || listing.seller.username}
+                        width={56}
+                        height={56}
+                        className="rounded-full object-cover"
+                      />
+                    ) : (
+                      (listing.seller.display_name || listing.seller.username || 'S')
+                        .charAt(0)
+                        .toUpperCase()
+                    )}
                   </div>
-                  <div>
-                    <p className="font-semibold text-[var(--charcoal)]">{listing.seller.name}</p>
-                    <p className="text-sm text-[var(--slate)]">{listing.seller.sales} sales</p>
+
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-gray-900 truncate">
+                      {listing.seller.display_name || listing.seller.username}
+                    </p>
+                    <p className="text-sm text-gray-500 truncate">@{listing.seller.username}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-sm">
+                        {getTierDisplay(listing.seller.tier_seller).emoji}{' '}
+                        {getTierDisplay(listing.seller.tier_seller).name}
+                      </span>
+                      <span className="text-gray-300">•</span>
+                      <span className="text-sm text-gray-500">
+                        {(listing.seller.handicap_seller || 18).toFixed(1)} HC
+                      </span>
+                    </div>
                   </div>
-                </div>
-                <GolfBallRating rating={listing.seller.rating} />
+
+                  <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                </Link>
+
+                <button
+                  onClick={handleMessageSeller}
+                  className="w-full py-2 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                >
+                  <MessageCircle className="w-5 h-5" />
+                  Message Seller
+                </button>
+              </div>
+            )}
+
+            {/* Trust Badges */}
+            <div className="flex items-center gap-4 text-sm text-gray-500 mb-6">
+              <div className="flex items-center gap-1">
+                <Shield className="w-4 h-4" />
+                <span>Buyer Protection</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Truck className="w-4 h-4" />
+                <span>Tracked Shipping</span>
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="mt-8 space-y-3">
+            {/* ACTION BUTTONS - Desktop */}
+            <div className="hidden lg:flex gap-3">
               <button
-                className="w-full py-4 rounded-full font-semibold text-lg bg-[var(--brand)] text-white hover:bg-[#4a5040] transition-all"
+                onClick={handleBuyNow}
+                className="flex-1 py-3 bg-[#5f6651] text-white rounded-xl font-semibold hover:bg-[#4a5040] transition-colors"
               >
+                Buy Now
+              </button>
+              <button
+                onClick={handleAddToCart}
+                className="flex-1 py-3 border-2 border-[#5f6651] text-[#5f6651] rounded-xl font-semibold hover:bg-[#5f6651]/5 transition-colors flex items-center justify-center gap-2"
+              >
+                <ShoppingBag className="w-5 h-5" />
                 Add to Cart
               </button>
-              
-              <button className="w-full py-4 rounded-full font-semibold text-lg border-2 border-[var(--brand)] text-[var(--brand)] hover:bg-[var(--brand)] hover:text-white transition-all">
-                Make an Offer
-              </button>
-            </div>
-
-            {/* Shipping info */}
-            <div className="mt-8 pt-6 border-t border-[var(--border)]">
-              <div className="flex items-center gap-3 text-[var(--slate)]">
-                <span>📦</span>
-                <span>Free shipping on orders over $100</span>
-              </div>
-              <div className="flex items-center gap-3 text-[var(--slate)] mt-2">
-                <span>🛡️</span>
-                <span>Buyer protection on all purchases</span>
-              </div>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* More from seller - desktop */}
-        {similarListings.length > 0 && (
-          <div className="mt-16">
-            <h2 className="text-2xl font-bold text-[var(--charcoal)] mb-6">More from this seller</h2>
-            <div className="grid grid-cols-5 gap-4">
-              {similarListings.slice(0, 5).map((item) => (
-                <Link
-                  key={item.id}
-                  href={`/listing/${item.id}`}
-                  className="group block bg-white rounded-2xl overflow-hidden border border-[var(--border)] hover:shadow-lg transition-all"
-                >
-                  <div className="aspect-square bg-[var(--sand-light)] flex items-center justify-center">
-                    <img src={item.img} alt={item.title} className="w-full h-full object-contain p-2" />
-                  </div>
-                  <div className="p-3">
-                    <p className="text-xs text-[var(--slate)] uppercase">{item.brand}</p>
-                    <h3 className="font-medium text-[var(--charcoal)] text-sm mt-1 line-clamp-1">{item.title}</h3>
-                    <p className="text-base font-bold text-[var(--brand)] mt-1">{formatPrice(item.price)}</p>
-                  </div>
-                </Link>
-              ))}
+      {/* ACTION BUTTONS - Mobile Fixed Bottom */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 flex gap-3">
+        <button
+          onClick={handleAddToCart}
+          className="w-14 h-14 border-2 border-[#5f6651] text-[#5f6651] rounded-xl flex items-center justify-center flex-shrink-0 hover:bg-[#5f6651]/5 transition-colors"
+        >
+          <ShoppingBag className="w-6 h-6" />
+        </button>
+        <button
+          onClick={handleBuyNow}
+          className="flex-1 py-3 bg-[#5f6651] text-white rounded-xl font-semibold hover:bg-[#4a5040] transition-colors"
+        >
+          Buy Now - ${(listing.price_cents / 100).toFixed(2)}
+        </button>
+      </div>
+
+      {/* SIZE WARNING MODAL */}
+      {showSizeWarning && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <AlertTriangle className="w-6 h-6 text-yellow-600" />
+              </div>
+              <h3 className="text-lg font-semibold">Size Warning</h3>
+            </div>
+            <p className="text-gray-600 mb-6">{fitAdvice.message}. Are you sure you want to add this item to your cart?</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowSizeWarning(false)}
+                className="flex-1 py-2 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={addToCart}
+                className="flex-1 py-2 bg-[#5f6651] text-white rounded-xl font-medium hover:bg-[#4a5040] transition-colors"
+              >
+                Add Anyway
+              </button>
             </div>
           </div>
-        )}
-      </main>
+        </div>
+      )}
     </div>
-  </div>
   )
 }
