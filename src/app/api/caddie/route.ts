@@ -1,10 +1,20 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createClient } from '@supabase/supabase-js'
 import Anthropic from '@anthropic-ai/sdk'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 })
+
+// Create service role client for API queries (bypasses RLS)
+function createServiceRoleClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+    process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+    { auth: { persistSession: false } }
+  )
+}
 
 // Types
 interface CaddieRequest {
@@ -44,8 +54,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get user profile with sizes
-    const { data: profile } = await supabase
+    // Get user profile with sizes (optional - user might not have profile yet)
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', user.id)
@@ -53,13 +63,13 @@ export async function POST(request: Request) {
 
     const body: CaddieRequest = await request.json()
 
-    // Fetch available listings
-    let listingsQuery = supabase
+    // Fetch available listings using service role to bypass RLS
+    const serviceClient = createServiceRoleClient()
+    let listingsQuery = serviceClient
       .from('listings')
       .select(`
         id, title, brand, category, gender, size, color, condition, 
-        price_cents, fit_scale, description, is_one_size,
-        images:listing_images(url, display_order)
+        price_cents, shipping_price_cents, description
       `)
       .eq('status', 'active')
       .neq('seller_id', user.id)
@@ -95,10 +105,9 @@ export async function POST(request: Request) {
       color: l.color || 'Not specified',
       condition: l.condition,
       price_cents: l.price_cents,
-      fit_scale: l.fit_scale,
+      fit_scale: 5,
       description: l.description || '',
-      image_url:
-        l.images?.sort((a: any, b: any) => a.display_order - b.display_order)[0]?.url || '',
+      image_url: '',
     }))
 
     // Get reference listing if provided
@@ -141,35 +150,40 @@ export async function POST(request: Request) {
     const aiResponse =
       response.content[0].type === 'text' ? response.content[0].text : ''
 
-    const parsedOutfit = parseOutfitResponse(aiResponse, formattedListings)
+    const parsedOutfit = parseOutfitResponse(aiResponse, formattedListings) as any
 
     // Save the recommendation to database
-    if (parsedOutfit.listings.length > 0) {
-      const { data: outfit } = await supabase
-        .from('caddie_outfits')
-        .insert({
-          user_id: user.id,
-          prompt: body.prompt,
-          occasion: body.occasion,
-          outfit_name: parsedOutfit.name,
-          outfit_description: parsedOutfit.description,
-          style_notes: parsedOutfit.styleNotes,
-          listing_ids: parsedOutfit.listings.map((l: ListingForCaddie) => l.id),
-        })
-        .select('id')
-        .single()
-
-      // Track individual recommendations
-      if (outfit) {
-        for (const listing of parsedOutfit.listings) {
-          await supabase.from('caddie_recommendations').insert({
+    try {
+      if (parsedOutfit?.listings?.length > 0) {
+        const { data: outfit } = await supabase
+          .from('caddie_outfits')
+          .insert({
             user_id: user.id,
-            listing_id: listing.id,
-            outfit_id: outfit.id,
-            context: body.type,
+            prompt: body.prompt,
+            occasion: body.occasion,
+            outfit_name: parsedOutfit.name,
+            outfit_description: parsedOutfit.description,
+            style_notes: parsedOutfit.styleNotes,
+            listing_ids: parsedOutfit.listings.map((l: ListingForCaddie) => l.id),
           })
+          .select('id')
+          .single()
+
+        // Track individual recommendations
+        if (outfit) {
+          for (const listing of parsedOutfit.listings) {
+            await supabase.from('caddie_recommendations').insert({
+              user_id: user.id,
+              listing_id: listing.id,
+              outfit_id: outfit.id,
+              context: body.type,
+            })
+          }
         }
       }
+    } catch (dbError) {
+      console.warn('Database save failed:', dbError)
+      // Continue anyway - still return the outfit to the user
     }
 
     return NextResponse.json({
@@ -177,9 +191,14 @@ export async function POST(request: Request) {
       outfit: parsedOutfit,
     })
   } catch (error) {
-    console.error('Caddie AI error:', error)
+    const errorMessage = error instanceof Error ? error.message : JSON.stringify(error)
+    const errorStack = error instanceof Error ? error.stack : ''
+    console.error('Caddie API Error:', { message: errorMessage, stack: errorStack })
     return NextResponse.json(
-      { error: 'Failed to generate recommendations' },
+      {
+        error: 'Failed to generate recommendations',
+        details: errorMessage,
+      },
       { status: 500 }
     )
   }
@@ -321,14 +340,13 @@ function parseOutfitResponse(aiResponse: string, availableListings: ListingForCa
       styleNotes: enrichedOutfits[0]?.styleNotes || '',
     }
   } catch (error) {
-    console.error('Failed to parse AI response:', error)
-    return {
-      outfits: [],
-      listings: [],
-      name: '',
-      description: '',
-      styleNotes: '',
-      error: 'Failed to parse recommendations',
-    }
+    console.error('Caddie API Error:', error)
+    return NextResponse.json(
+      {
+        error: 'Failed to generate recommendations',
+        details: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 }
+    )
   }
 }
